@@ -8,7 +8,6 @@ class Box : public Object {
 	public:
 		Box(unsigned int x, unsigned int y, unsigned int w, unsigned int h, PhImage_t *texture);
 
-		void		tick();
 		void		draw();
 		object_type_t	get_type();
 		void		set_pos(unsigned int x, unsigned int y);

@@ -9,10 +9,6 @@ Box::Box(unsigned int x, unsigned int y, unsigned int w, unsigned int h, PhImage
 	this->texture = texture;
 }
 
-void Box::tick() {
-
-}
-
 void Box::draw() {
 	PhRect_t  rect;
 

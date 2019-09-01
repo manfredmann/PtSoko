@@ -11,9 +11,6 @@ Brick::Brick(unsigned int x, unsigned int y, unsigned int w, unsigned int h, PhI
 	this->texture = texture;
 }
 
-void Brick::tick() {
-}
-
 void Brick::draw() {
 	PhRect_t  rect;
 

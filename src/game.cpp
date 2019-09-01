@@ -104,12 +104,8 @@ PhDim_t Game::get_winsize() {
 void Game::photon_event() {
 	union {
 		void *raw;
-		PhPointerEvent_t *ptr_ev;
 		PhKeyEvent_t     *key_ev;
-		PhWindowEvent_t  *win_ev;
 	} ph_ev;
-
-	//event_t event;
 
 	app->event->processing_flags = 0;
 	ph_ev.raw = PhGetData(app->event);
@@ -157,12 +153,6 @@ void Game::photon_process() {
 }
 
 void Game::tick() {
-	for (size_t i = 0; i < objects.entries(); ++i) {
-		Object *object = objects[i];
-
-		object->tick();
-	}
-
 	photon_process();
 	//PtDamageWidget(raw);
 }

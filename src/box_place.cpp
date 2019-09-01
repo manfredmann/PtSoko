@@ -8,9 +8,6 @@ Box_place::Box_place(unsigned int x, unsigned int y, unsigned int w, unsigned in
 	this->texture = texture;
 }
 
-void Box_place::tick() {
-}
-
 void Box_place::draw() {
 	PhRect_t  rect;
 

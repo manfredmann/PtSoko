@@ -6,7 +6,6 @@
 class Box_place : public Object {
 	public:
 		Box_place(unsigned int x, unsigned int y, unsigned int w, unsigned int h, PhImage_t *texture);
-		void 		tick();
 		void		draw();
 
 		object_type_t	get_type();

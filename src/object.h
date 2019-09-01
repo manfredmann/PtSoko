@@ -42,7 +42,6 @@ class Object {
 
 		}
 
-		virtual void 		tick();
 		virtual void 		draw();
 		virtual object_type_t	get_type();
 		virtual void		set_pos(unsigned int x, unsigned int y);
