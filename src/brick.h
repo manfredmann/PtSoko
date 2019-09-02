@@ -17,7 +17,6 @@ class Brick : public Object {
 	private:
 		object_post_t 	pos;
 		PhImage_t *	texture;
-		
 		unsigned int	color;
 };
 

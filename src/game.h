@@ -8,6 +8,9 @@
 #include <String.h>
 #include <wcvector.h>
 
+#include <photon/PhRender.h>
+#include <photon/PtLabel.h>
+
 #include "object.h"
 #include "brick.h"
 #include "box.h"
@@ -55,50 +58,45 @@ class Game {
 			return instance;
 		}
 
-
-		void 		init();
-		void		tick();
-		void 		set_state(game_state_t state);
-		game_state_t	get_state();
-		PhDim_t		get_winsize();
-
-		void 		level_next();
-		void 		level_prev();
-		void		level_restart();
-		void		level_load(size_t index);
-		void		level_unload();
-		String		level_name();
-
-		objects_t *	get_objects();
+		void 			init();
+		void			run();
+		void 			key_process(unsigned int key, bool press, bool release);
 
 	private:
 		Game();
 		Game& operator=( Game& );
 
-		PhDim_t		win_size;
-		PtAppContext_t	app;
-		PtWidget_t *	window;
-		PtWidget_t * 	raw;
-		PtWidget_t *	dbc;
-		objects_t	objects;
+		PhDim_t			win_size;
+		PtAppContext_t		app;
+		PtWidget_t *		window;
+		PtWidget_t * 		label;
+		PtWidget_t *		tim;
+		PhImage_t *		buf_draw;
+		PmMemoryContext_t *	mc;
+		objects_t		objects;
 
-		objects_t	boxes;
-		objects_t	box_places;
+		objects_t		boxes;
+		objects_t		box_places;
 
-		textures_t	textures;
-		game_state_t	state;
-		levels_t	levels;
-		size_t		level_current;
+		textures_t		textures;
+		game_state_t		state;
+		levels_t		levels;
+		size_t			level_current;
 
-		unsigned int	moves;
+		unsigned int		moves;
 
-		void		photon_event();
-		void		photon_process();
-		void 		key_process(unsigned int key, bool press, bool release);
-		void 		player_move(Player *player, direction_t dir);
+		void 			set_state(game_state_t state);
 
-		static void	draw(PtWidget_t *widget, PhTile_t *damage);
+		void			level_load(size_t index);
+		void			level_unload();
+		void 			level_next();
+		void 			level_prev();
+		void			level_restart();
+		String			level_name();
+		void 			player_move(Player *player, direction_t dir);
+		void			draw();
 
+		static int		keyboard_callback(PtWidget_t *widget, void *data, PtCallbackInfo_t *info);
 };
 
 #endif

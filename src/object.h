@@ -7,6 +7,7 @@
 
 #define PX_IMAGE_MODULES
 #define PX_BMP_SUPPORT
+#define PX_PNG_SUPPORT
 
 #include <photon/PxImage.h>
 

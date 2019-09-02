@@ -11,23 +11,7 @@ int main(int argc, char **argv) {
 
 	try {
 		game->init();
-
-		while(1) {
-			struct timespec tstart={0,0}, tend={0,0};
-			clock_gettime(CLOCK_REALTIME, &tstart);
-
-			game->tick();
-
-			clock_gettime(CLOCK_REALTIME, &tend);
-
-			double diff = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) - ((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
-			diff = 10.0 - (diff * 1000.0);
-
-			if (diff > 0) {
-				delay(diff);
-			}
-		}
-
+		game->run();
 	} catch (Game_ex e) {
 		printf("Error: %s\n", (const char *) e.what());
 	}

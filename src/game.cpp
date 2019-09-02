@@ -1,6 +1,41 @@
 #include "game.h"
 #include <String.h>
 #include <stdio.h>
+#include <time.h>
+
+static void *img_memory_allocate(long nbytes, int type) {
+	if( type == PX_IMAGE ) {
+		return( PgShmemCreate( nbytes, NULL ) );
+	} else {
+		return( calloc( 1, nbytes ) );
+	}
+}
+
+static void *img_memory_free(void *memory, int type) {
+	if (type == PX_IMAGE) {
+		PgShmemDestroy( memory );
+	} else {
+		free( memory );
+	}
+
+	return NULL;
+}
+
+static void *img_warning(char *msg) {
+	printf("%s\n", msg);
+	return NULL;
+}
+
+static void *img_error(char *msg) {
+	printf("%s\n", msg);
+	exit(EXIT_FAILURE);
+	return NULL;
+}
+
+static void *img_progress(int percent) {
+	printf("Texture load status:  %d.%d percent\n", percent >> 16, percent & 0xffff);
+	return NULL;
+}
 
 Game::Game() {
 	PhChannelParms_t parms		= {0, 0, Ph_DYNAMIC_BUFFER};
@@ -17,20 +52,22 @@ Game::Game() {
 
 	PtInit(NULL);
 
+	PgSetDrawBufferSize(0xFFFF);
+
 	win_size.w = 620;
 	win_size.h = 508;
 
 	PtArg_t		args_win[10];
-	PtArg_t		args_raw[2];
-	PtArg_t 	args_dbc[4];
-	PhPoint_t	dbc_pos = {0, 0};
-	PhDim_t		dbc_dim = {win_size.w, win_size.h};
-	PhArea_t	dbc_area = {0, 0, win_size.w, win_size.h};
+	PtArg_t		args_lbl[6];
 
-	PtSetArg(&args_win[0], Pt_ARG_MIN_WIDTH, dbc_dim.w, 0);
-	PtSetArg(&args_win[1], Pt_ARG_MIN_HEIGHT, dbc_dim.h, 0);
-	PtSetArg(&args_win[3], Pt_ARG_MAX_HEIGHT, dbc_dim.w, 0);
-	PtSetArg(&args_win[4], Pt_ARG_MAX_WIDTH,  dbc_dim.h, 0);
+	PhPoint_t	dbc_pos = {0, 0};
+	PhDim_t		dim = {win_size.w, win_size.h};
+	PhArea_t	area = {0, 0, win_size.w, win_size.h};
+
+	PtSetArg(&args_win[0], Pt_ARG_MIN_WIDTH, dim.w, 0);
+	PtSetArg(&args_win[1], Pt_ARG_MIN_HEIGHT, dim.h, 0);
+	PtSetArg(&args_win[3], Pt_ARG_MAX_HEIGHT, dim.w, 0);
+	PtSetArg(&args_win[4], Pt_ARG_MAX_WIDTH,  dim.h, 0);
 	PtSetArg(&args_win[5], Pt_ARG_WINDOW_TITLE, "Sokoban", 0);
 	PtSetArg(&args_win[6], Pt_ARG_WINDOW_RENDER_FLAGS,
                     		Ph_WM_RENDER_ASAPP |
@@ -46,26 +83,63 @@ Game::Game() {
 	PtSetParentWidget(NULL);
 	window = PtCreateWidget(PtWindow, NULL, 10, args_win);
 
-	PtSetArg(&args_dbc[0], Pt_ARG_AREA, &dbc_area, 0);
-	PtSetArg(&args_dbc[1], Pt_ARG_DB_IMAGE_TYPE, Pg_IMAGE_PALETTE_BYTE, 0);
-	PtSetArg(&args_dbc[2], Pt_ARG_DB_MEMORY_CONTEXT_TYPE, Pm_PHS_CONTEXT, 0);
+	PtAddEventHandler(window, Ph_EV_KEY, &keyboard_callback, NULL);
 
-	dbc = PtCreateWidget(PtDBContainer, window, 3, args_dbc);
+	buf_draw	= new PhImage_t;
+	buf_draw->type	= Pg_IMAGE_PALETTE_BYTE; // 3 bytes per pixel 
+	buf_draw->size	= dim;
+	buf_draw->image = (char *) PgShmemCreate(dim.w * dim.h * 3, NULL);
 
-	PtSetArg(&args_raw[0], Pt_ARG_RAW_DRAW_F, &draw, 1);
-	PtSetArg(&args_raw[1], Pt_ARG_DIM, &dbc_dim, 0);
+	PtSetArg(&args_lbl[0], Pt_ARG_LABEL_TYPE, Pt_IMAGE, 0 );
+	PtSetArg(&args_lbl[1], Pt_ARG_AREA, &area, 0 );
+	PtSetArg(&args_lbl[2], Pt_ARG_LABEL_DATA, buf_draw, sizeof(*buf_draw));
+	PtSetArg(&args_lbl[3], Pt_ARG_MARGIN_HEIGHT, 0, 0);
+	PtSetArg(&args_lbl[4], Pt_ARG_MARGIN_WIDTH, 0, 0);
+	PtSetArg(&args_lbl[5], Pt_ARG_BORDER_WIDTH, 0, 0);
+
+	label = PtCreateWidget(PtLabel, window, 6, args_lbl);
+
+	PhPoint_t translation = { 0, 0 }, center, radii;
+	mc = PmMemCreateMC(buf_draw, &win_size, &translation);
+
+	PxMethods_t methods_brick;
+	PxMethods_t methods_box;
+	PxMethods_t methods_box_place;
 	
-	raw = PtCreateWidget(PtRaw, dbc, 2, args_raw);
+	memset(&methods_brick, 0, sizeof(PxMethods_t));
+	memset(&methods_box, 0, sizeof(PxMethods_t));
+	memset(&methods_box_place, 0, sizeof(PxMethods_t));
 
-	PtRealizeWidget(window);
-	app = PtDefaultAppContext();
+	methods_brick.px_alloc		= img_memory_allocate;
+	methods_brick.px_free		= img_memory_free;
+	methods_brick.px_warning	= img_warning;
+	methods_brick.px_error		= img_error;
+	methods_brick.px_progress	= img_progress;
+	methods_brick.flags		= PX_LOAD;
 
-	textures.box		= PxLoadImage("textures/box.bmp", NULL);//PxLoadImage("textures/box.bmp", NULL);
-	textures.box_place	= PxLoadImage("textures/box_place.bmp", NULL);
-	textures.brick		= PxLoadImage("textures/brick.bmp", NULL);
+	methods_box.px_alloc		= img_memory_allocate;
+	methods_box.px_free		= img_memory_free;
+	methods_box.px_warning		= img_warning;
+	methods_box.px_error		= img_error;
+	methods_box.px_progress		= img_progress;
+	methods_box.flags		= PX_LOAD;
+
+	methods_box_place.px_alloc	= img_memory_allocate;
+	methods_box_place.px_free	= img_memory_free;
+	methods_box_place.px_warning	= img_warning;
+	methods_box_place.px_error	= img_error;
+	methods_box_place.px_progress	= img_progress;
+	methods_box_place.flags		= PX_LOAD;
+
+	textures.box		= PxLoadImage("textures/box.bmp", &methods_box);//PxLoadImage("textures/box.bmp", NULL);
+	textures.box_place	= PxLoadImage("textures/box_place.bmp", &methods_box_place);
+	textures.brick		= PxLoadImage("textures/brick.bmp", &methods_brick);
 
 	state		= STATE_INIT;
 	level_current	= 0;
+
+	PtRealizeWidget(window);
+	app = PtDefaultAppContext();
 }
 
 void Game::init() {
@@ -97,64 +171,8 @@ void Game::init() {
 	level_load(level_current);
 }
 
-PhDim_t Game::get_winsize() {
-	return win_size;
-}
-
-void Game::photon_event() {
-	union {
-		void *raw;
-		PhKeyEvent_t     *key_ev;
-	} ph_ev;
-
-	app->event->processing_flags = 0;
-	ph_ev.raw = PhGetData(app->event);
-
-	switch(app->event->type) {
-		case Ph_EV_WM: {
-			//printf("window event!\n");
-			break;
-		}
-		case Ph_EV_KEY: {
-			if (PkIsFirstDown(ph_ev.key_ev->key_flags)) {
-				key_process(ph_ev.key_ev->key_cap, true, false);
-      			} else if (PkIsReleased(ph_ev.key_ev->key_flags)) {
-				key_process(ph_ev.key_ev->key_cap, false, true);      				
-      			} else {
-      				key_process(ph_ev.key_ev->key_cap, false, false);  
-      			}
-			PtDamageWidget(raw);      			
-      			break;
-		}
-	}
-	PtEventHandler(app->event);
-}
-
-void Game::photon_process() {
-	register int ret;
-
-	while((ret = PhEventPeek(app->event, app->event_size)))
-	{
-		switch(ret)
-		{
-			case Ph_EVENT_MSG:
-				photon_event();
-			break;
-			case Ph_RESIZE_MSG:
-				if (PtResizeEventMsg(app, PhGetMsgSize(app->event)) == -1)
-					printf("Can not reallocate event buffer\n");
-			break;
-			case -1:
-				printf("Receiving Photon event\n");
-			break;
-		}
-	}
-
-}
-
-void Game::tick() {
-	photon_process();
-	//PtDamageWidget(raw);
+void Game::run() {
+	PtMainLoop();
 }
 
 bool check(object_post_t r1, object_post_t r2) {
@@ -307,16 +325,18 @@ void Game::key_process(unsigned int key, bool press, bool release) {
 			level_prev();
 			break;
 		}
-
 	}
+
+	draw();
 }
 
-static void Game::draw(PtWidget_t *widget, PhTile_t *damage) {
-	Game *game = &Game::get_instance();
+void Game::draw() {
+	clock_t c_start, c_end;
 
-	PhDim_t win_size = game->get_winsize();
+	c_start = clock();
+	PmMemStart( mc );
 
-	switch(game->get_state()) {
+	switch(state) {
 		case STATE_INIT: {
 			PgSetFillColor(0x0A0A0A);
 			PgDrawIRect(0, 0, win_size.w, win_size.h, Pg_DRAW_FILL );
@@ -334,7 +354,7 @@ static void Game::draw(PtWidget_t *widget, PhTile_t *damage) {
 			PhPoint_t p;
 			
 			char status_str[1024];
-			sprintf(status_str, "Level: %s   Moves: %d", (const char *) game->level_name(), game->moves);
+			sprintf(status_str, "Level: %s   Moves: %d", (const char *) level_name(), moves);
 
 			p.x = 10;
 			p.y = win_size.h - 8;
@@ -343,29 +363,46 @@ static void Game::draw(PtWidget_t *widget, PhTile_t *damage) {
 			PgSetTextColor(0xF0F0F0);
 			PgDrawText(status_str, strlen(status_str), &p, 0);
 
-			objects_t *objects = game->get_objects();
-
-			for (size_t i = 0; i < objects->entries(); ++i) {
-				Object *object = (*objects)[i];
-
+			for (size_t i = 0; i < objects.entries(); ++i) {
+				Object *object = objects[i];
 				object->draw();
 			}
 		}
 	}
+
+	PmMemFlush(mc, buf_draw);
+	PmMemStop(mc);
+
+	PtArg_t args[1];
+	PtSetArg( &args[0], Pt_ARG_LABEL_DATA, buf_draw, sizeof(*buf_draw));
+	PtSetResources( label, 1, args );
+
+	c_end = clock();
+
+	double c_diff = (double)(c_end - c_start) / CLOCKS_PER_SEC;
+
+	printf("Draw time:\t%f\n", c_diff * 1000.0);
 }
 
-objects_t * Game::get_objects() {
-	return &this->objects;
-}
+static int Game::keyboard_callback(PtWidget_t *widget, void *data, PtCallbackInfo_t *info) {
+	if (info->event->type == Ph_EV_KEY) {
+		PhKeyEvent_t *	ke	= (PhKeyEvent_t *) PhGetData(info->event);
+		Game *		game	= &Game::get_instance();
 
+		if (PkIsFirstDown(ke->key_flags)) {
+			game->key_process(ke->key_cap, true, false);
+		} else if (PkIsReleased(ke->key_flags)) {
+			game->key_process(ke->key_cap, false, true);
+		} else {
+			game->key_process(ke->key_cap, false, false);
+		}
+	}
+	return Pt_CONTINUE;
+}
 
 void Game::set_state(game_state_t state) {
 	this->state = state;
-	PtDamageWidget(raw);
-}
-
-game_state_t Game::get_state() {
-	return state;
+	draw();
 }
 
 String Game::level_name() {

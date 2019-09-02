@@ -17,15 +17,18 @@ void Box::draw() {
 	rect.lr.x = pos.x + pos.w;
 	rect.lr.y = pos.y + pos.h;
 
-	//PgSetUserClip(&rect);
+	PgSetUserClip(&rect);
 
 	if (texture == NULL) {
 		PgSetFillColor(0xAA5500);
 		PgDrawIRect(pos.x, pos.y, pos.x + pos.w, pos.y + pos.h, Pg_DRAW_FILL);
 	} else {
 		PhPoint_t    p = { pos.x, pos.y };
+//		PgDrawPhImagemx(&p, texture, NULL);
 		PgDrawImagemx(texture->image, texture->type, &p, &texture->size, texture->bpl, 0 );
-	}	
+	}
+
+	PtClipRemove();
 }
 
 object_type_t Box::get_type() {

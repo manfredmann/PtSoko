@@ -19,10 +19,12 @@ void Player::draw() {
 	rect.lr.x = pos.x + pos.w;
 	rect.lr.y = pos.y + pos.h;
 
-	//PgSetUserClip(&rect);
+	PgSetUserClip(&rect);
 
 	PgSetFillColor(0x005500);
 	PgDrawIRect(pos.x, pos.y, pos.x + pos.w, pos.y + pos.h, Pg_DRAW_FILL);
+
+	PtClipRemove();
 }
 
 object_type_t Player::get_type() {
