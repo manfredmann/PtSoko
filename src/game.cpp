@@ -136,7 +136,7 @@ Game::Game() {
 	textures.brick		= PxLoadImage("textures/brick.bmp", &methods_brick);
 
 	state		= STATE_INIT;
-	level_current	= 13;
+	level_current	= 0;
 
 	PtRealizeWidget(window);
 	app = PtDefaultAppContext();
