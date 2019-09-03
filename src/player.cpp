@@ -7,10 +7,6 @@ Player::Player(unsigned int x, unsigned int y, unsigned int w, unsigned int h) {
 	this->pos.h = h;
 }
 
-void Player::tick() {
-
-}
-
 void Player::draw() {
 	PhRect_t  rect;
 	

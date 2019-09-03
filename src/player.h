@@ -8,7 +8,6 @@ class Player : public Object {
 	public:
 		Player(unsigned int x, unsigned int y, unsigned int w, unsigned int h);
 
-		void			tick();
 		void			draw();
 		object_type_t	get_type();
 		void			set_pos(unsigned int x, unsigned int y);
