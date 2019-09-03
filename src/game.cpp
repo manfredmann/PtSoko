@@ -136,7 +136,7 @@ Game::Game() {
 	textures.brick		= PxLoadImage("textures/brick.bmp", &methods_brick);
 
 	state		= STATE_INIT;
-	level_current	= 0;
+	level_current	= 13;
 
 	PtRealizeWidget(window);
 	app = PtDefaultAppContext();
@@ -199,7 +199,7 @@ void Game::story_add(bool player_only) {
 
 	if (!player_only) {
 		for (size_t i = 0; i < boxes.entries(); ++i) {
-			Object *obj = boxes[i];
+			Object *obj			= boxes[i];
 
 			object_pos_t *pos 	= new object_pos_t;
 			*pos 				= obj->get_pos();
@@ -212,12 +212,8 @@ void Game::story_add(bool player_only) {
 
 	object_pos_t *pos 	= new object_pos_t;
 	*pos 				= obj->get_pos();
-
+	
 	positions->insert(pos);
-
-	for (size_t i = 0; i < positions->entries(); ++i) {
-		printf("x: %d: y: %d\n", (*positions)[i]->x, (*positions)[i]->y);
-	}
 
 	story.insert(positions);
 }
@@ -229,6 +225,7 @@ void Game::story_back() {
 
 	objects_pos_t *last_move = story[story.entries() - 1];
 
+	//Restore Box positions
 	if (last_move->entries() > 1) {
 		for (size_t i = 0; i < last_move->entries() - 1; ++i) {
 			object_pos_t *pos = (*last_move)[i];
@@ -238,6 +235,8 @@ void Game::story_back() {
 		}
 	}
 
+
+	//Restore Player position
 	object_pos_t *pos = (*last_move)[last_move->entries() - 1];
 	Object *obj = objects[objects.entries() - 1];
 
@@ -256,7 +255,8 @@ void Game::story_clear() {
 			delete moves->last();
 			moves->removeLast();
 		}
-		delete moves;
+		
+		delete story.last();
 		story.removeLast();
 	}
 }
@@ -345,6 +345,10 @@ void Game::player_move(Player *player, direction_t dir) {
 
 
 void Game::key_process(unsigned int key) {
+	if (state != STATE_GAME) {
+		return;
+	}
+
 	Player *player = NULL;
 
 	for (size_t i = 0; i < objects.entries(); ++i) {
@@ -397,9 +401,6 @@ void Game::key_process(unsigned int key) {
 }
 
 void Game::draw() {
-	clock_t c_start, c_end;
-
-	c_start = clock();
 	PmMemStart( mc );
 
 	switch(state) {
@@ -442,26 +443,10 @@ void Game::draw() {
 	PtArg_t args[1];
 	PtSetArg( &args[0], Pt_ARG_LABEL_DATA, buf_draw, sizeof(*buf_draw));
 	PtSetResources( label, 1, args );
-
-	c_end = clock();
-
-	double c_diff = (double)(c_end - c_start) / CLOCKS_PER_SEC;
-
-	printf("Draw time:\t\t%f\n", c_diff * 1000.0);
 }
-
-clock_t k_start, k_end;
 
 static int Game::keyboard_callback(PtWidget_t *widget, void *data, PtCallbackInfo_t *info) {
 	if (info->event->type == Ph_EV_KEY) {
-		k_end = clock();
-
-		double k_time = (double) (k_end - k_start) / CLOCKS_PER_SEC;
-
-		printf("Key event period:\t%f\n", k_time * 1000);
-
-		k_start = k_end = clock();
-
 		PhKeyEvent_t *	ke	= (PhKeyEvent_t *) PhGetData(info->event);
 		Game *		game	= &Game::get_instance();
 
@@ -614,7 +599,7 @@ void Game::level_load(size_t index) {
 
 void Game::level_unload() {
 	story_clear();
-	
+
 	while (objects.entries() != 0) {
 		Object *obj = objects.first();
 

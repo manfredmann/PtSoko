@@ -19,7 +19,7 @@
 
 #define PkIsReleased( f ) ((f & (Pk_KF_Key_Down|Pk_KF_Key_Repeat)) == 0)
 
-typedef	WCValSortedVector<object_pos_t *>	objects_pos_t;
+typedef	WCValOrderedVector<object_pos_t *>	objects_pos_t;
 typedef WCValSortedVector<String>			levels_t;
 typedef WCValOrderedVector<Object *>		objects_t;
 typedef WCValOrderedVector<objects_pos_t *>	story_t;

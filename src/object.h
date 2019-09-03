@@ -27,7 +27,6 @@ typedef enum {
 	OBJECT_BOX,
 	OBJECT_BOXPLACE,
 	OBJECT_PLAYER,
-	OBJECT_COLOR,
 } object_type_t;
 
 typedef struct {
