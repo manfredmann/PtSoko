@@ -19,8 +19,10 @@
 
 #define PkIsReleased( f ) ((f & (Pk_KF_Key_Down|Pk_KF_Key_Repeat)) == 0)
 
-typedef WCValSortedVector<String>	levels_t;
-typedef WCValOrderedVector<Object *>	objects_t;
+typedef	WCValSortedVector<object_pos_t *>	objects_pos_t;
+typedef WCValSortedVector<String>			levels_t;
+typedef WCValOrderedVector<Object *>		objects_t;
+typedef WCValOrderedVector<objects_pos_t *>	story_t;
 
 typedef enum {
 	STATE_INIT,
@@ -58,45 +60,50 @@ class Game {
 			return instance;
 		}
 
-		void 			init();
-		void			run();
-		void 			key_process(unsigned int key, bool press, bool release);
+		void 				init();
+		void				run();
+		void 				key_process(unsigned int key);
 
 	private:
 		Game();
 		Game& operator=( Game& );
 
-		PhDim_t			win_size;
+		PhDim_t				win_size;
 		PtAppContext_t		app;
 		PtWidget_t *		window;
 		PtWidget_t * 		label;
 		PtWidget_t *		tim;
-		PhImage_t *		buf_draw;
+		PhImage_t *			buf_draw;
 		PmMemoryContext_t *	mc;
-		objects_t		objects;
+		objects_t			objects;
 
-		objects_t		boxes;
-		objects_t		box_places;
+		objects_t			boxes;
+		objects_t			box_places;
 
-		textures_t		textures;
+		textures_t			textures;
 		game_state_t		state;
-		levels_t		levels;
-		size_t			level_current;
+		levels_t			levels;
+		size_t				level_current;
+		story_t				story;
 
 		unsigned int		moves;
 
-		void 			set_state(game_state_t state);
+		void 				set_state(game_state_t state);
 
-		void			level_load(size_t index);
-		void			level_unload();
-		void 			level_next();
-		void 			level_prev();
-		void			level_restart();
-		String			level_name();
-		void 			player_move(Player *player, direction_t dir);
-		void			draw();
+		void				level_load(size_t index);
+		void				level_unload();
+		void 				level_next();
+		void 				level_prev();
+		void				level_restart();
+		String				level_name();
+		void 				player_move(Player *player, direction_t dir);
+		void				draw();
 
-		static int		keyboard_callback(PtWidget_t *widget, void *data, PtCallbackInfo_t *info);
+		void				story_add(bool player_only);
+		void				story_back();
+		void				story_clear();
+		
+		static int			keyboard_callback(PtWidget_t *widget, void *data, PtCallbackInfo_t *info);
 };
 
 #endif

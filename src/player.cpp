@@ -36,12 +36,12 @@ void Player::set_pos(unsigned int x, unsigned int y) {
 	this->pos.y = y;
 }
 
-object_post_t Player::get_pos() {
+object_pos_t Player::get_pos() {
 	return pos;
 }
 
-object_post_t Player::move_next(direction_t dir) {
-	object_post_t pos_curr = pos;
+object_pos_t Player::move_next(direction_t dir) {
+	object_pos_t pos_curr = pos;
 
 	switch(dir) {
 		case DIRECTION_UP: {
@@ -66,6 +66,6 @@ object_post_t Player::move_next(direction_t dir) {
 }
 
 void Player::move(direction_t dir) {
-	object_post_t offset = move_next(dir);
+	object_pos_t offset = move_next(dir);
 	pos = move_next(dir);
 }

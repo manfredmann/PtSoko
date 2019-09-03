@@ -35,7 +35,7 @@ typedef struct {
 	unsigned int y;
 	unsigned int w;
 	unsigned int h;
-} object_post_t;
+} object_pos_t;
 
 class Object {
 	public:
@@ -43,10 +43,10 @@ class Object {
 
 		}
 
-		virtual void 		draw();
+		virtual void 			draw();
 		virtual object_type_t	get_type();
-		virtual void		set_pos(unsigned int x, unsigned int y);
-		virtual object_post_t	get_pos();
+		virtual void			set_pos(unsigned int x, unsigned int y);
+		virtual object_pos_t	get_pos();
 
 	private:
 

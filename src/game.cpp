@@ -175,7 +175,7 @@ void Game::run() {
 	PtMainLoop();
 }
 
-bool check(object_post_t r1, object_post_t r2) {
+bool check(object_pos_t r1, object_pos_t r2) {
 	int x0 = r1.x;
 	int y0 = r1.y;
 
@@ -194,16 +194,83 @@ bool check(object_post_t r1, object_post_t r2) {
 	return true;
 }
 
+void Game::story_add(bool player_only) {
+	objects_pos_t *positions = new objects_pos_t;
+
+	if (!player_only) {
+		for (size_t i = 0; i < boxes.entries(); ++i) {
+			Object *obj = boxes[i];
+
+			object_pos_t *pos 	= new object_pos_t;
+			*pos 				= obj->get_pos();
+
+			positions->insert(pos);
+		}		
+	}
+
+	Object *obj = objects[objects.entries() - 1];
+
+	object_pos_t *pos 	= new object_pos_t;
+	*pos 				= obj->get_pos();
+
+	positions->insert(pos);
+
+	for (size_t i = 0; i < positions->entries(); ++i) {
+		printf("x: %d: y: %d\n", (*positions)[i]->x, (*positions)[i]->y);
+	}
+
+	story.insert(positions);
+}
+
+void Game::story_back() {
+	if (story.entries() == 0) {
+		return;
+	}
+
+	objects_pos_t *last_move = story[story.entries() - 1];
+
+	if (last_move->entries() > 1) {
+		for (size_t i = 0; i < last_move->entries() - 1; ++i) {
+			object_pos_t *pos = (*last_move)[i];
+			Object *obj = boxes[i];
+
+			obj->set_pos(pos->x, pos->y);
+		}
+	}
+
+	object_pos_t *pos = (*last_move)[last_move->entries() - 1];
+	Object *obj = objects[objects.entries() - 1];
+
+	obj->set_pos(pos->x, pos->y);
+
+	delete last_move;
+	story.removeLast();
+	moves--;
+}
+
+void Game::story_clear() {
+	while(story.entries() != 0) {
+		objects_pos_t *moves = story.last();
+
+		while (moves->entries() != 0) {
+			delete moves->last();
+			moves->removeLast();
+		}
+		delete moves;
+		story.removeLast();
+	}
+}
+
 void Game::player_move(Player *player, direction_t dir) {
-	object_post_t	player_pos_next	= player->move_next(dir);
-	object_post_t	player_pos	= player->get_pos();
+	object_pos_t	player_pos_next	= player->move_next(dir);
+	object_pos_t	player_pos	= player->get_pos();
 	Box *		box		= NULL;
 
 	bool is_move_correct = true;
 
 	for (size_t i = 0; i < objects.entries(); ++i) {
 		Object *	object	= objects[i];
-		object_post_t	obj_pos = object->get_pos();
+		object_pos_t	obj_pos = object->get_pos();
 
 		switch(object->get_type()) {
 			case OBJECT_BRICK: {
@@ -224,12 +291,12 @@ void Game::player_move(Player *player, direction_t dir) {
 
 	if (is_move_correct) {
 		if (box != NULL) {
-			object_post_t box_pos_next = box->move_calc(dir, player_pos_next.x, player_pos_next.y);
+			object_pos_t box_pos_next = box->move_calc(dir, player_pos_next.x, player_pos_next.y);
 
 			for (size_t i = 0; i < objects.entries(); ++i) {
 
 				Object *	object	= objects[i];
-				object_post_t	obj_pos = object->get_pos();
+				object_pos_t	obj_pos = object->get_pos();
 
 				switch(object->get_type()) {
 					case OBJECT_BOX: {
@@ -245,7 +312,10 @@ void Game::player_move(Player *player, direction_t dir) {
 					}
 				}
 			}
+			story_add(false);
 			box->move(dir, player_pos_next.x, player_pos_next.y);
+		} else {
+			story_add(true);
 		}
 
 		player->move(dir);
@@ -274,7 +344,7 @@ void Game::player_move(Player *player, direction_t dir) {
 }
 
 
-void Game::key_process(unsigned int key, bool press, bool release) {
+void Game::key_process(unsigned int key) {
 	Player *player = NULL;
 
 	for (size_t i = 0; i < objects.entries(); ++i) {
@@ -288,10 +358,6 @@ void Game::key_process(unsigned int key, bool press, bool release) {
 		return;
 	}
 	
-	if (release) {
-		return;
-	}
-
 	switch(key) {
 		case Pk_Up: {
 			player_move(player, DIRECTION_UP);
@@ -310,7 +376,7 @@ void Game::key_process(unsigned int key, bool press, bool release) {
 			break;
 		}
 		case Pk_BackSpace: {
-			printf("Pk_BackSpace\n");
+			story_back();
 			break;
 		}
 		case Pk_r: {
@@ -381,20 +447,30 @@ void Game::draw() {
 
 	double c_diff = (double)(c_end - c_start) / CLOCKS_PER_SEC;
 
-	printf("Draw time:\t%f\n", c_diff * 1000.0);
+	printf("Draw time:\t\t%f\n", c_diff * 1000.0);
 }
+
+clock_t k_start, k_end;
 
 static int Game::keyboard_callback(PtWidget_t *widget, void *data, PtCallbackInfo_t *info) {
 	if (info->event->type == Ph_EV_KEY) {
+		k_end = clock();
+
+		double k_time = (double) (k_end - k_start) / CLOCKS_PER_SEC;
+
+		printf("Key event period:\t%f\n", k_time * 1000);
+
+		k_start = k_end = clock();
+
 		PhKeyEvent_t *	ke	= (PhKeyEvent_t *) PhGetData(info->event);
 		Game *		game	= &Game::get_instance();
 
 		if (PkIsFirstDown(ke->key_flags)) {
-			game->key_process(ke->key_cap, true, false);
+			game->key_process(ke->key_cap);
 		} else if (PkIsReleased(ke->key_flags)) {
-			game->key_process(ke->key_cap, false, true);
+			//game->key_process(ke->key_cap, false, true);
 		} else {
-			game->key_process(ke->key_cap, false, false);
+			game->key_process(ke->key_cap);
 		}
 	}
 	return Pt_CONTINUE;
@@ -526,7 +602,7 @@ void Game::level_load(size_t index) {
 	for (i = 0; i < objects.entries(); ++i) {
 		Object *obj = objects[i];
 
-		object_post_t obj_pos = obj->get_pos();
+		object_pos_t obj_pos = obj->get_pos();
 		obj_pos.x += x_offset;
 		obj_pos.y += y_offset;
 		obj->set_pos(obj_pos.x, obj_pos.y);
@@ -537,6 +613,8 @@ void Game::level_load(size_t index) {
 }
 
 void Game::level_unload() {
+	story_clear();
+	
 	while (objects.entries() != 0) {
 		Object *obj = objects.first();
 

@@ -41,7 +41,7 @@ void Brick::set_pos(unsigned int x, unsigned int y) {
 	this->pos.y = y;
 }
 
-object_post_t Brick::get_pos() {
+object_pos_t Brick::get_pos() {
 	return pos;
 }
 

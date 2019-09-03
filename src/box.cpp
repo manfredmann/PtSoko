@@ -40,12 +40,12 @@ void Box::set_pos(unsigned int x, unsigned int y) {
 	this->pos.y = y;
 }
 
-object_post_t Box::get_pos() {
+object_pos_t Box::get_pos() {
 	return pos;
 }
 
-object_post_t Box::move_calc(direction_t dir, unsigned int x, unsigned int y) {
-	object_post_t pos_next = pos;
+object_pos_t Box::move_calc(direction_t dir, unsigned int x, unsigned int y) {
+	object_pos_t pos_next = pos;
 
 	switch(dir) {
 		case DIRECTION_UP: {

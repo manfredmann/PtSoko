@@ -40,6 +40,6 @@ void Box_place::set_pos(unsigned int x, unsigned int y) {
 	this->pos.y = y;
 }
 
-object_post_t Box_place::get_pos() {
+object_pos_t Box_place::get_pos() {
 	return pos;
 }
