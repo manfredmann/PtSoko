@@ -135,7 +135,7 @@ Game::Game() {
 	textures.box_place	= PxLoadImage("textures/box_place.bmp", &methods_box_place);
 	textures.brick		= PxLoadImage("textures/brick.bmp", &methods_brick);
 
-	state		= STATE_INIT;
+	state			= STATE_INIT;
 	level_current	= 0;
 
 	PtRealizeWidget(window);
@@ -167,8 +167,8 @@ void Game::init() {
 	if (levels.entries() == 0) {
 		throw Game_ex("Levels not found");
 	}
-
-	level_load(level_current);
+	state = STATE_SPLASH;
+	draw();
 }
 
 void Game::run() {
@@ -345,79 +345,142 @@ void Game::player_move(Player *player, direction_t dir) {
 
 
 void Game::key_process(unsigned int key) {
-	if (state != STATE_GAME) {
-		return;
-	}
+	switch(state) {
+		case STATE_SPLASH: {
+			if (key == Pk_s && state == STATE_SPLASH) {
+				level_load(level_current);
+			}
+			break;
+		}
+		case STATE_GAME: {
+			Player *player = NULL;
 
-	Player *player = NULL;
+			for (size_t i = 0; i < objects.entries(); ++i) {
+				if (objects[i]->get_type() == OBJECT_PLAYER) {
+					player = (Player *) objects[i];
+					break;
+				}
+			}
 
-	for (size_t i = 0; i < objects.entries(); ++i) {
-		if (objects[i]->get_type() == OBJECT_PLAYER) {
-			player = (Player *) objects[i];
+			if (player == NULL) {
+				return;
+			}
+			
+			switch(key) {
+				case Pk_Up: {
+					player_move(player, DIRECTION_UP);
+					break;
+				}
+				case Pk_Down: {
+					player_move(player, DIRECTION_DOWN);
+					break;
+				}
+				case Pk_Left: {
+					player_move(player, DIRECTION_LEFT);
+					break;
+				}
+				case Pk_Right: {
+					player_move(player, DIRECTION_RIGHT);
+					break;
+				}
+				case Pk_BackSpace: {
+					story_back();
+					break;
+				}
+				case Pk_r: {
+					level_restart();
+					break;
+				}
+				case Pk_n: {
+					level_next();
+					break;
+				}
+				case Pk_p: {
+					level_prev();
+					break;
+				}
+			}
 			break;
 		}
 	}
-
-	if (player == NULL) {
-		return;
-	}
-	
-	switch(key) {
-		case Pk_Up: {
-			player_move(player, DIRECTION_UP);
-			break;
-		}
-		case Pk_Down: {
-			player_move(player, DIRECTION_DOWN);
-			break;
-		}
-		case Pk_Left: {
-			player_move(player, DIRECTION_LEFT);
-			break;
-		}
-		case Pk_Right: {
-			player_move(player, DIRECTION_RIGHT);
-			break;
-		}
-		case Pk_BackSpace: {
-			story_back();
-			break;
-		}
-		case Pk_r: {
-			level_restart();
-			break;
-		}
-		case Pk_n: {
-			level_next();
-			break;
-		}
-		case Pk_p: {
-			level_prev();
-			break;
-		}
-	}
-
 	draw();
 }
+
+void Game::draw_string(unsigned int x, unsigned int y, char *str, char *font, unsigned int color) {
+	PhPoint_t p;
+	p.x = x;
+	p.y = y;
+
+	PgSetFont(font);
+	PgSetTextColor(color);
+	PgDrawText(str, strlen(str), &p, 0);
+}
+
+unsigned int Game::get_string_width(char *font, char *str) {
+	PhRect_t rect;
+
+	PfExtentText(&rect, NULL, font, str, strlen(str));
+
+	return rect.lr.x - rect.ul.x + 1;
+}
+
+unsigned int Game::get_string_height(char *font, char *str) {
+	PhRect_t rect;
+
+	PfExtentText(&rect, NULL, font, str, strlen(str));
+
+	return rect.lr.y - rect.ul.y + 1;
+}
+
 
 void Game::draw() {
 	PmMemStart( mc );
 
+	PgSetFillColor(0x0A0A0A);
+	PgDrawIRect(0, 0, win_size.w, win_size.h, Pg_DRAW_FILL );
+
 	switch(state) {
+		case STATE_SPLASH: {
+			char str[1024];
+			unsigned int h;
+			unsigned int s = 1;
+			sprintf(str, "Sokoban for QNX4.25 v%.1f", GAME_VERSION);
+			h = get_string_height("pcterm20", str);
+
+			draw_string(10, h + s, str, "pcterm20", 0xF0F0F0);
+
+			sprintf(str, "Control: ");
+			draw_string(10, (h * 2) + s, str, "pcterm20", 0xF0F0F0);
+
+			sprintf(str, "N - Next level");
+			draw_string(10, (h * 3) + s, str, "pcterm20", 0xF0F0F0);
+
+			sprintf(str, "P - Previous level");
+			draw_string(10, (h * 4) + s, str, "pcterm20", 0xF0F0F0);
+
+			sprintf(str, "R - Restart level");
+			draw_string(10, (h * 5) + s, str, "pcterm20", 0xF0F0F0);
+
+			sprintf(str, "Backspace - Undo");
+			draw_string(10, (h * 6) + s, str, "pcterm20", 0xF0F0F0);
+
+			sprintf(str, "Press S to start");
+			draw_string((win_size.w / 2) - (get_string_width("pcterm20", str) / 2), 
+						(win_size.h / 2), 
+						str, "pcterm20", 0xF0F0F0);
+
+			sprintf(str, "(c) %s 2019", GAME_AUTHOR);
+			draw_string(win_size.w - get_string_width("pcterm20", str) - 10, win_size.h - (h / 2), str, "pcterm20", 0xF0F0F0);
+
+			break;
+		}
 		case STATE_INIT: {
-			PgSetFillColor(0x0A0A0A);
-			PgDrawIRect(0, 0, win_size.w, win_size.h, Pg_DRAW_FILL );
 			break;
 		}
 		case STATE_LOADING: {
-			PgSetFillColor(0x0A0A0A);
-			PgDrawIRect(0, 0, win_size.w, win_size.h, Pg_DRAW_FILL );
 			break;
 		}
 		case STATE_GAME: {
-			PgSetFillColor(0x0A0A0A);
-			PgDrawIRect(0, 0, win_size.w, win_size.h, Pg_DRAW_FILL );
-
 			PhPoint_t p;
 			
 			char status_str[1024];

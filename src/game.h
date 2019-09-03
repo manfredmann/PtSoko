@@ -4,10 +4,12 @@
 #include <Ap.h>
 #include <Ph.h>
 #include <Pt.h>
+
 #include <dirent.h>
 #include <String.h>
 #include <wcvector.h>
 
+#include <photon/Pf.h>
 #include <photon/PhRender.h>
 #include <photon/PtLabel.h>
 
@@ -24,8 +26,12 @@ typedef WCValSortedVector<String>			levels_t;
 typedef WCValOrderedVector<Object *>		objects_t;
 typedef WCValOrderedVector<objects_pos_t *>	story_t;
 
+#define GAME_AUTHOR "Roman Serov"
+#define GAME_VERSION 0.1
+
 typedef enum {
 	STATE_INIT,
+	STATE_SPLASH,
 	STATE_LOADING,
 	STATE_GAME,
 	STATE_WIN,
@@ -98,6 +104,10 @@ class Game {
 		String				level_name();
 		void 				player_move(Player *player, direction_t dir);
 		void				draw();
+		void 				draw_string(unsigned int x, unsigned int y, char *str, char *font, unsigned int color);
+
+		unsigned int		get_string_width(char *font, char *str);
+		unsigned int		get_string_height(char *font, char *str);
 
 		void				story_add(bool player_only);
 		void				story_back();
