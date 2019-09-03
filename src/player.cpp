@@ -66,6 +66,5 @@ object_pos_t Player::move_next(direction_t dir) {
 }
 
 void Player::move(direction_t dir) {
-	object_pos_t offset = move_next(dir);
 	pos = move_next(dir);
 }
