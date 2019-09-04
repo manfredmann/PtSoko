@@ -93,6 +93,8 @@ class Game {
 		story_t				story;
 
 		unsigned int		moves;
+		unsigned int		status_height;
+		char *				status_font;
 
 		void 				set_state(game_state_t state);
 

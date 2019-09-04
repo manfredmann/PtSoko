@@ -59,7 +59,7 @@ Game::Game() {
 	PgSetDrawBufferSize(0xFFFF);
 
 	win_size.w = 620;
-	win_size.h = 508;
+	win_size.h = 504;
 
 	PtArg_t		args_win[10];
 	PtArg_t		args_lbl[6];
@@ -142,8 +142,13 @@ Game::Game() {
 	state			= STATE_INIT;
 	level_current	= 0;
 
+	status_font		= new char[strlen("pcterm14")];
+	strcpy(status_font, "pcterm14");
+	status_height	= get_string_height(status_font, "Status");
+
 	PtRealizeWidget(window);
 	app = PtDefaultAppContext();
+
 }
 
 void Game::init() {
@@ -445,28 +450,35 @@ void Game::draw() {
 
 	switch(state) {
 		case STATE_SPLASH: {
-			char str[1024];
-			unsigned int h;
-			unsigned int s = 1;
+			char			str[1024];
+			unsigned int	h;
+			int				s;
+			unsigned int	x;
+			unsigned int 	y;
+
 			sprintf(str, "Sokoban for QNX4.25 v%.1f", GAME_VERSION);
 			h = get_string_height("pcterm20", str);
 
-			draw_string(10, h + s, str, "pcterm20", 0xF0F0F0);
+			x = h / 2;
+			y = 0;
+			s = 1;
+
+			draw_string(x, y + h + s, str, "pcterm20", 0xF0F0F0);
 
 			sprintf(str, "Control: ");
-			draw_string(10, (h * 2) + s, str, "pcterm20", 0xF0F0F0);
+			draw_string(x, y + (h * 2) + s, str, "pcterm20", 0xF0F0F0);
 
 			sprintf(str, "N - Next level");
-			draw_string(10, (h * 3) + s, str, "pcterm20", 0xF0F0F0);
+			draw_string(x, y + (h * 3) + s, str, "pcterm20", 0xF0F0F0);
 
 			sprintf(str, "P - Previous level");
-			draw_string(10, (h * 4) + s, str, "pcterm20", 0xF0F0F0);
+			draw_string(x, y + (h * 4) + s, str, "pcterm20", 0xF0F0F0);
 
 			sprintf(str, "R - Restart level");
-			draw_string(10, (h * 5) + s, str, "pcterm20", 0xF0F0F0);
+			draw_string(x, y + (h * 5) + s, str, "pcterm20", 0xF0F0F0);
 
 			sprintf(str, "Backspace - Undo");
-			draw_string(10, (h * 6) + s, str, "pcterm20", 0xF0F0F0);
+			draw_string(x, y + (h * 6) + s, str, "pcterm20", 0xF0F0F0);
 
 			sprintf(str, "Press S to start");
 			draw_string((win_size.w / 2) - (get_string_width("pcterm20", str) / 2), 
@@ -474,7 +486,7 @@ void Game::draw() {
 				str, "pcterm20", 0xF0F0F0);
 
 			sprintf(str, "(c) %s 2019", GAME_AUTHOR);
-			draw_string(win_size.w - get_string_width("pcterm20", str) - 10, win_size.h - (h / 2), str, "pcterm20", 0xF0F0F0);
+			draw_string(win_size.w - get_string_width("pcterm20", str) - (h / 2), win_size.h - (h / 2), str, "pcterm20", 0xF0F0F0);
 
 			break;
 		}
@@ -490,10 +502,10 @@ void Game::draw() {
 			char status_str[1024];
 			sprintf(status_str, "Level: %s   Moves: %d", (const char *) level_name(), moves);
 
-			p.x = 10;
-			p.y = win_size.h - 8;
+			p.x = (status_height / 2) + 1;
+			p.y = win_size.h - (status_height / 2);
 
-			PgSetFont("pcterm14");
+			PgSetFont(status_font);
 			PgSetTextColor(0xF0F0F0);
 			PgDrawText(status_str, strlen(status_str), &p, 0);
 
@@ -625,6 +637,7 @@ void Game::level_load(size_t index) {
 				}
 				case '@': {
 					player = new Player(x, y, step - 1, step - 1);
+
 					break;
 				}
 			}
@@ -646,7 +659,7 @@ void Game::level_load(size_t index) {
 	fclose(level);
 
 	x_offset = (win_size.w - x_max) / 2;
-	y_offset = (win_size.h - y_max - 8 - 14) / 2;
+	y_offset = (win_size.h - y_max - status_height - (status_height / 2)) / 2;
 
 	for (size_t i = 0; i < box_places.entries(); ++i) {
 		objects.insert(box_places[i]);
