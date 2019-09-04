@@ -15,7 +15,7 @@ class Box_place : public Object {
 
 	private:
 		object_pos_t 	pos;
-		PhImage_t *	texture;
+		PhImage_t *		texture;
 };
 
 #endif

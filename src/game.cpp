@@ -89,8 +89,8 @@ Game::Game() {
 
 	PtAddEventHandler(window, Ph_EV_KEY, &keyboard_callback, NULL);
 
-	buf_draw	= new PhImage_t;
-	buf_draw->type	= Pg_IMAGE_PALETTE_BYTE; // 3 bytes per pixel 
+	buf_draw		= new PhImage_t;
+	buf_draw->type	= Pg_IMAGE_PALETTE_BYTE;
 	buf_draw->size	= dim;
 	buf_draw->image = (char *) PgShmemCreate(dim.w * dim.h * 3, NULL);
 
@@ -267,8 +267,8 @@ void Game::story_clear() {
 
 void Game::player_move(Player *player, direction_t dir) {
 	object_pos_t	player_pos_next	= player->move_next(dir);
-	object_pos_t	player_pos	= player->get_pos();
-	Box *		box		= NULL;
+	object_pos_t	player_pos		= player->get_pos();
+	Box *		box					= NULL;
 
 	bool is_move_correct = true;
 
@@ -299,7 +299,7 @@ void Game::player_move(Player *player, direction_t dir) {
 
 			for (size_t i = 0; i < objects.entries(); ++i) {
 
-				Object *	object	= objects[i];
+				Object *	object		= objects[i];
 				object_pos_t	obj_pos = object->get_pos();
 
 				switch(object->get_type()) {
