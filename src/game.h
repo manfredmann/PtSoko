@@ -26,8 +26,8 @@ typedef WCValSortedVector<String>			levels_t;
 typedef WCValOrderedVector<Object *>		objects_t;
 typedef WCValOrderedVector<objects_pos_t *>	story_t;
 
-#define GAME_AUTHOR "Roman Serov"
-#define GAME_VERSION 0.1
+#define GAME_AUTHOR		"Roman Serov"
+#define GAME_VERSION	0.1
 
 typedef enum {
 	STATE_INIT,

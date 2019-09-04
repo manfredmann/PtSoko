@@ -7,9 +7,9 @@
 #include "game.h"
 
 int main(int argc, char **argv) {
-	Game *game = &Game::get_instance();
-
 	try {
+		Game *game = &Game::get_instance();
+
 		game->init();
 		game->run();
 	} catch (Game_ex e) {

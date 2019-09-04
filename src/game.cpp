@@ -38,16 +38,20 @@ static void *img_progress(int percent) {
 }
 
 Game::Game() {
-	PhChannelParms_t parms		= {0, 0, Ph_DYNAMIC_BUFFER};
-	char *		displayname	= NULL;
+	PhChannelParms_t 	parms		= {0, 0, Ph_DYNAMIC_BUFFER};
+	char *				displayname	= NULL;
 
 	if (!PhAttach(displayname, &parms)) {
-		if (displayname)
-			printf("Could not attach to Photon manager [%s]", displayname);
-		else if ((displayname = getenv("PHOTON")))
-			printf("Could not attach to Photon manager (PHOTON=[%s])", displayname);
-		else
-			printf("Could not attach to Photon manager [/dev/photon]");
+		String err;
+
+		if (displayname) {
+			err = "Could not attach to Photon manager [" + String(displayname) + "]";
+		} else if ((displayname = getenv("PHOTON"))) {
+			err = "Could not attach to Photon manager (PHOTON=[" + String(displayname) +  "])";
+		} else {
+			err = "Could not attach to Photon manager [/dev/photon]";
+		}
+		throw Game_ex(err);
 	}
 
 	PtInit(NULL);
@@ -70,11 +74,11 @@ Game::Game() {
 	PtSetArg(&args_win[4], Pt_ARG_MAX_WIDTH,  dim.h, 0);
 	PtSetArg(&args_win[5], Pt_ARG_WINDOW_TITLE, "Sokoban", 0);
 	PtSetArg(&args_win[6], Pt_ARG_WINDOW_RENDER_FLAGS,
-                    		Ph_WM_RENDER_ASAPP |
-                    		Ph_WM_RENDER_CLOSE |
-                    		Ph_WM_RENDER_TITLE |
-                    		Ph_WM_RENDER_MIN,
-                    		Pt_TRUE);
+		Ph_WM_RENDER_ASAPP |
+		Ph_WM_RENDER_CLOSE |
+		Ph_WM_RENDER_TITLE |
+		Ph_WM_RENDER_MIN,
+		Pt_TRUE);
 
 	PtSetArg(&args_win[7], Pt_ARG_WINDOW_CURSOR_OVERRIDE, Pt_TRUE, 0);
 	PtSetArg(&args_win[8], Pt_ARG_WINDOW_STATE, Ph_WM_STATE_ISFRONT, 0);
@@ -115,21 +119,21 @@ Game::Game() {
 	methods_brick.px_warning	= img_warning;
 	methods_brick.px_error		= img_error;
 	methods_brick.px_progress	= img_progress;
-	methods_brick.flags		= PX_LOAD;
+	methods_brick.flags			= PX_LOAD;
 
 	methods_box.px_alloc		= img_memory_allocate;
-	methods_box.px_free		= img_memory_free;
+	methods_box.px_free			= img_memory_free;
 	methods_box.px_warning		= img_warning;
 	methods_box.px_error		= img_error;
 	methods_box.px_progress		= img_progress;
-	methods_box.flags		= PX_LOAD;
+	methods_box.flags			= PX_LOAD;
 
-	methods_box_place.px_alloc	= img_memory_allocate;
-	methods_box_place.px_free	= img_memory_free;
+	methods_box_place.px_alloc		= img_memory_allocate;
+	methods_box_place.px_free		= img_memory_free;
 	methods_box_place.px_warning	= img_warning;
-	methods_box_place.px_error	= img_error;
+	methods_box_place.px_error		= img_error;
 	methods_box_place.px_progress	= img_progress;
-	methods_box_place.flags		= PX_LOAD;
+	methods_box_place.flags			= PX_LOAD;
 
 	textures.box		= PxLoadImage("textures/box.bmp", &methods_box);//PxLoadImage("textures/box.bmp", NULL);
 	textures.box_place	= PxLoadImage("textures/box_place.bmp", &methods_box_place);
@@ -466,8 +470,8 @@ void Game::draw() {
 
 			sprintf(str, "Press S to start");
 			draw_string((win_size.w / 2) - (get_string_width("pcterm20", str) / 2), 
-						(win_size.h / 2), 
-						str, "pcterm20", 0xF0F0F0);
+				(win_size.h / 2), 
+				str, "pcterm20", 0xF0F0F0);
 
 			sprintf(str, "(c) %s 2019", GAME_AUTHOR);
 			draw_string(win_size.w - get_string_width("pcterm20", str) - 10, win_size.h - (h / 2), str, "pcterm20", 0xF0F0F0);
@@ -510,8 +514,8 @@ void Game::draw() {
 
 static int Game::keyboard_callback(PtWidget_t *widget, void *data, PtCallbackInfo_t *info) {
 	if (info->event->type == Ph_EV_KEY) {
-		PhKeyEvent_t *	ke	= (PhKeyEvent_t *) PhGetData(info->event);
-		Game *		game	= &Game::get_instance();
+		PhKeyEvent_t *	ke		= (PhKeyEvent_t *) PhGetData(info->event);
+		Game *			game	= &Game::get_instance();
 
 		if (PkIsFirstDown(ke->key_flags)) {
 			game->key_process(ke->key_cap);
