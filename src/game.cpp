@@ -58,8 +58,14 @@ Game::Game() {
 
 	PgSetDrawBufferSize(0xFFFF);
 
-	win_size.w = 620;
-	win_size.h = 504;
+	block_h = 20;
+	block_w = 20;
+
+	blocks_w = 31;
+	blocks_h = 24;
+
+	win_size.w = blocks_w * block_w;
+	win_size.h = (blocks_h * block_h) + 24;
 
 	PtArg_t		args_win[10];
 	PtArg_t		args_lbl[6];
@@ -170,12 +176,115 @@ void Game::init() {
 			continue;
 		}
 
-		levels.insert(fname);
+		printf("Loading %s: ", (const char *) fname);
+		fname = "levels/" + fname;
+
+		FILE *level_file = fopen((const char *) fname, "r");
+
+		if (level_file == NULL) {
+			printf("error: Couldn't open file\n");
+			continue;
+		}
+
+		char line[1024];
+
+		String			level;
+		unsigned int 	boxes		= 0;
+		unsigned int 	box_places	= 0;
+		unsigned int	player		= 0;
+		unsigned int 	width		= 0;
+		unsigned int 	height 		= 0;
+
+		while (fgets(line, sizeof(line), level_file) != NULL) {
+			line[strlen(line) - 1] = '\0';
+
+			for (int i = 0; i < strlen(line); ++i) {
+				char type = line[i];
+
+				switch (type) {
+					case LVL_BTYPE_BRICK: {
+						level += type;
+						break;						
+					}
+					case LVL_BTYPE_BOX: {
+						++boxes;
+						level += type;
+
+						break;
+					}
+					case LVL_BTYPE_BOX_PLACE: {
+						++box_places;
+						level += type;
+
+						break;
+					}
+					case LVL_BTYPE_BOXWPLACE: {
+						++boxes;
+						++box_places;
+
+						level += type;
+						break;
+					}
+					case LVL_BTYPE_PLAYER: {
+						++player;
+
+						level += type;
+						break;
+					}
+					case LVL_BTYPE_EMPTY: {
+						level += ' ';
+						break;
+					}
+				}
+				++width;
+
+				if (width > blocks_w) {
+					throw Game_ex("Broken level file. Level width to high\n");
+				}
+			}
+
+			width = 0;
+			++height;
+
+			if (height > blocks_h) {
+				throw Game_ex("Broken level file. Level height to high\n");
+			}
+			level += '\n';
+		}
+
+		fclose(level_file);
+
+		if (player == 0) {
+			throw Game_ex("Broken level file. Player = 0\n");
+		}
+
+		if (boxes == 0) {
+			throw Game_ex("Broken level file. Box = 0\n");
+		}
+
+		if (box_places == 0) {
+			throw Game_ex("Broken level file. Box_place = 0\n");
+		}
+
+		if (boxes != box_places) {
+			throw Game_ex("Broken level file. Box != Box_place\n");
+		}
+
+		if (player > 1) {
+			throw Game_ex("Broken level file. Player > 0\n");
+		}
+
+		level = fname + ";" + level;
+
+		levels.insert(level);
+
+		printf("OK\n");
 	}
 
 	if (levels.entries() == 0) {
 		throw Game_ex("Levels not found");
 	}
+
 	state = STATE_SPLASH;
 	draw();
 }
@@ -546,7 +655,9 @@ void Game::set_state(game_state_t state) {
 }
 
 String Game::level_name() {
-	return levels[level_current];
+	int name_index = levels[level_current].index(";");
+
+	return String(levels[level_current], 0, name_index);
 }
 
 void Game::level_restart() {
@@ -579,16 +690,11 @@ void Game::level_prev() {
 void Game::level_load(size_t index) {
 	set_state(STATE_LOADING);
 
-	String fname = "levels/" + levels[index];
+	int name_index = levels[level_current].index(";");
 
-	FILE *level = fopen((const char *) fname, "r");
+	String level = String(levels[level_current], name_index + 1);
 
-	if (level == NULL) {
-		throw Game_ex("Couldn't load file \"" + fname + "\"");
-	}
-
-	char line[1024];
-
+	size_t 			i;
 	unsigned int	x		= 0;
 	unsigned int	y		= 0;
 	
@@ -600,68 +706,64 @@ void Game::level_load(size_t index) {
 
 	unsigned int	step	= 20;
 
-	Player *	player		= NULL;
+	Player *		player		= NULL;
 
-	while (fgets(line, sizeof(line), level) != NULL) {
-		line[strlen(line) - 1] = '\0';
+	for (i = 0; i < level.length(); ++i) {
+		char type = level[i];
 
-		for (int i = 0; i < strlen(line); ++i) {
-			char type = line[i];
+		switch(type) {
+			case LVL_BTYPE_BRICK: {
+				Brick *brick = new Brick(x, y, step - 1, step - 1, textures.brick);
 
-			switch(type) {
-				case '#': {
-					Brick *brick = new Brick(x, y, step - 1, step - 1, textures.brick);
-
-					objects.insert((Object *)brick);
-					break;
-				}
-				case '$': {
-					Box *box = new Box(x, y, step - 1, step - 1, textures.box);
-
-					boxes.insert((Object *)box);
-					break;
-				}
-				case '.': {
-					Box_place *box_place = new Box_place(x, y, step - 1, step - 1, textures.box_place);
-
-					box_places.insert((Object *)box_place);
-					break;
-				}
-				case '*': {
-					Box *box = new Box(x, y, step - 1, step - 1, textures.box);
-					Box_place *box_place = new Box_place(x, y, step - 1, step - 1, textures.box_place);
-
-					boxes.insert((Object *)box);
-					box_places.insert((Object *)box_place);
-					break;
-				}
-				case '@': {
-					player = new Player(x, y, step - 1, step - 1);
-
-					break;
-				}
+				objects.insert((Object *)brick);
+				break;
 			}
-			x += step;
-			if (x_max < x) {
-				x_max = x;
+			case LVL_BTYPE_BOX: {
+				Box *box = new Box(x, y, step - 1, step - 1, textures.box);
+
+				boxes.insert((Object *)box);
+				break;
+			}
+			case LVL_BTYPE_BOX_PLACE: {
+				Box_place *box_place = new Box_place(x, y, step - 1, step - 1, textures.box_place);
+
+				box_places.insert((Object *)box_place);
+				break;
+			}
+			case LVL_BTYPE_BOXWPLACE: {
+				Box *box = new Box(x, y, step - 1, step - 1, textures.box);
+				Box_place *box_place = new Box_place(x, y, step - 1, step - 1, textures.box_place);
+
+				boxes.insert((Object *)box);
+				box_places.insert((Object *)box_place);
+				break;
+			}
+			case LVL_BTYPE_PLAYER: {
+				player = new Player(x, y, step - 1, step - 1);
+				break;
+			}
+			case '\n': {
+				y += step;
+
+				if (y_max < y) {
+					y_max = y;
+				}
+
+				x = 0;
+				continue;
 			}
 		}
 
-		y += step;
-
-		if (y_max < y) {
-			y_max = y;
+		x += step;
+		if (x_max < x) {
+			x_max = x;
 		}
-
-		x = 0;
 	}
-
-	fclose(level);
 
 	x_offset = (win_size.w - x_max) / 2;
 	y_offset = (win_size.h - y_max - status_height - (status_height / 2)) / 2;
 
-	for (size_t i = 0; i < box_places.entries(); ++i) {
+	for (i = 0; i < box_places.entries(); ++i) {
 		objects.insert(box_places[i]);
 	}
 

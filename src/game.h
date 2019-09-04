@@ -38,6 +38,15 @@ typedef enum {
 	STATE_END,
 } game_state_t;
 
+typedef enum {
+	LVL_BTYPE_BRICK 	= '#',
+	LVL_BTYPE_BOX		= '$',
+	LVL_BTYPE_BOX_PLACE = '.',
+	LVL_BTYPE_BOXWPLACE	= '*',
+	LVL_BTYPE_PLAYER	= '@',
+	LVL_BTYPE_EMPTY		= ' ',
+} level_block_type_t;
+
 typedef struct {
 	PhImage_t * box;
 	PhImage_t * box_place;
@@ -74,6 +83,12 @@ class Game {
 		Game();
 		Game& operator=( Game& );
 
+		unsigned int		block_h;
+		unsigned int		block_w;
+
+		unsigned int		blocks_w;
+		unsigned int 		blocks_h;
+
 		PhDim_t				win_size;
 		PtAppContext_t		app;
 		PtWidget_t *		window;
@@ -89,6 +104,7 @@ class Game {
 		textures_t			textures;
 		game_state_t		state;
 		levels_t			levels;
+
 		size_t				level_current;
 		story_t				story;
 
