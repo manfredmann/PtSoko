@@ -1,16 +1,16 @@
-  XXXXXX
-  X   @XXXX
-XXXXX *   X
-X   XX    XXXX
-X * X  XX    X
-X * X  XXXXX X
-XX *  *    X X
-XX * * XXX X X
-XX X  *  X X X
-XX X X*X   X X
-XX XXX   X X XXXXXX
-X  *  XXXX X X....X
-X    *    *   ..X.X
-XXXX*  *X *   ....X
-X       X  XX ....X
-XXXXXXXXXXXXXXXXXXX
+  ######
+  #   @####
+##### $   #
+#   ##    ####
+# $ #  ##    #
+# $ #  ##### #
+## $  $    # #
+## $ $ ### # #
+## #  $  # # #
+## # #$#   # #
+## ###   # # ######
+#  $  #### # #....#
+#    $    $   ..#.#
+####$  $# $   ....#
+#       #  ## ....#
+###################

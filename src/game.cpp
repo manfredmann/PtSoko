@@ -597,14 +597,13 @@ void Game::level_load(size_t index) {
 			char type = line[i];
 
 			switch(type) {
-				case 'X':
 				case '#': {
 					Brick *brick = new Brick(x, y, step - 1, step - 1, textures.brick);
 
 					objects.insert((Object *)brick);
 					break;
 				}
-				case '*': {
+				case '$': {
 					Box *box = new Box(x, y, step - 1, step - 1, textures.box);
 
 					boxes.insert((Object *)box);
@@ -613,6 +612,14 @@ void Game::level_load(size_t index) {
 				case '.': {
 					Box_place *box_place = new Box_place(x, y, step - 1, step - 1, textures.box_place);
 
+					box_places.insert((Object *)box_place);
+					break;
+				}
+				case '*': {
+					Box *box = new Box(x, y, step - 1, step - 1, textures.box);
+					Box_place *box_place = new Box_place(x, y, step - 1, step - 1, textures.box_place);
+
+					boxes.insert((Object *)box);
 					box_places.insert((Object *)box_place);
 					break;
 				}
