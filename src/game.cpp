@@ -65,8 +65,8 @@ Game::Game() {
 	PtArg_t		args_lbl[6];
 
 	PhPoint_t	dbc_pos = {0, 0};
-	PhDim_t		dim = {win_size.w, win_size.h};
-	PhArea_t	area = {0, 0, win_size.w, win_size.h};
+	PhDim_t		dim		= {win_size.w, win_size.h};
+	PhArea_t	area	= {0, 0, win_size.w, win_size.h};
 
 	PtSetArg(&args_win[0], Pt_ARG_MIN_WIDTH, dim.w, 0);
 	PtSetArg(&args_win[1], Pt_ARG_MIN_HEIGHT, dim.h, 0);
@@ -204,8 +204,8 @@ void Game::story_add(bool player_only) {
 	if (!player_only) {
 		for (size_t i = 0; i < boxes.entries(); ++i) {
 			Object *obj			= boxes[i];
-
 			object_pos_t *pos 	= new object_pos_t;
+
 			*pos 				= obj->get_pos();
 
 			positions->insert(pos);
@@ -577,8 +577,8 @@ void Game::level_load(size_t index) {
 
 	char line[1024];
 
-	unsigned int	x	= 0;
-	unsigned int	y	= 0;
+	unsigned int	x		= 0;
+	unsigned int	y		= 0;
 	
 	unsigned int	x_max	= 0;
 	unsigned int	y_max	= 0;
@@ -588,7 +588,7 @@ void Game::level_load(size_t index) {
 
 	unsigned int	step	= 20;
 
-	Player *	player	= NULL;
+	Player *	player		= NULL;
 
 	while (fgets(line, sizeof(line), level) != NULL) {
 		line[strlen(line) - 1] = '\0';
