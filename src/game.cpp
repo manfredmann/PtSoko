@@ -33,7 +33,7 @@ static void *img_error(char *msg) {
 }
 
 static void *img_progress(int percent) {
-	printf("Texture load status:  %d.%d percent\n", percent >> 16, percent & 0xffff);
+	//printf("Texture load status:  %d.%d percent\n", percent >> 16, percent & 0xffff);
 	return NULL;
 }
 
@@ -605,6 +605,15 @@ void Game::draw() {
 		case STATE_LOADING: {
 			break;
 		}
+		case STATE_END: {
+			char str[1024];
+
+			sprintf(str, "The END");
+			draw_string((win_size.w / 2) - (get_string_width("pcterm20", str) / 2), 
+				(win_size.h / 2), 
+				str, "pcterm20", 0xF0F0F0);
+			break;
+		}
 		case STATE_GAME: {
 			PhPoint_t p;
 			
@@ -680,10 +689,13 @@ void Game::level_next() {
 }
 
 void Game::level_prev() {
+	set_state(STATE_INIT);
+	level_unload();
+
 	if (level_current >= 1) {
-		set_state(STATE_INIT);
-		level_unload();
 		level_load(--level_current);
+	} else {
+		set_state(STATE_SPLASH);
 	}
 }
 
