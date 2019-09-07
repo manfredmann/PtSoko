@@ -18,11 +18,6 @@
 */
 
 #include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <i86.h>
-#include <time.h>
-
 #include "game.h"
 
 int main(int argc, char **argv) {

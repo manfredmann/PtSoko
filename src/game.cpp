@@ -453,12 +453,12 @@ void Game::story_clear() {
 void Game::player_move(Player *player, direction_t dir) {
 	object_pos_t	player_pos_next	= player->move_next(dir);
 	object_pos_t	player_pos		= player->get_pos();
-	Box *		box					= NULL;
+	Box *			box				= NULL;
 
 	bool is_move_correct = true;
 
 	for (size_t i = 0; i < objects.entries(); ++i) {
-		Object *	object	= objects[i];
+		Object *		object	= objects[i];
 		object_pos_t	obj_pos = object->get_pos();
 
 		switch(object->get_type()) {
