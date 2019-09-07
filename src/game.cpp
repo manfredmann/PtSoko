@@ -703,12 +703,11 @@ void Game::draw() {
 			break;
 		}
 		case STATE_END: {
-			char str[1024];
+			char str[8];
 
-			sprintf(str, "The END");
-			draw_string((win_size.w / 2) - (get_string_width("pcterm20", str) / 2), 
-				(win_size.h / 2), 
-				str, "pcterm20", 0xF0F0F0);
+			_bprintf(str, 8, "The END");
+
+			draw_string((win_size.w / 2) - (get_string_width("pcterm20", str) / 2), (win_size.h / 2), str, "pcterm20", 0xF0F0F0);
 			break;
 		}
 		case STATE_GAME: {
@@ -718,7 +717,7 @@ void Game::draw() {
 			char status_moves[12];
 
 			_bprintf(status_level, 50, "Level: %s", (const char *) level_name());
-			_bprintf(status_moves, 12,  "Moves: %4d", moves);
+			_bprintf(status_moves, 12, "Moves: %4d", moves);
 
 			p.x = (status_height / 2) + 1;
 			p.y = win_size.h - (status_height / 2);
