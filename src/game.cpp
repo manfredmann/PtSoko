@@ -656,7 +656,7 @@ void Game::draw() {
 
 	switch(state) {
 		case STATE_SPLASH: {
-			char			str[1024];
+			char			str[100];
 			unsigned int	h;
 			int				s;
 			unsigned int	x;
@@ -671,27 +671,27 @@ void Game::draw() {
 
 			draw_string(x, y + h + s, str, "pcterm20", 0xF0F0F0);
 
-			sprintf(str, "Control: ");
+			_bprintf(str, 100, "Control: ");
 			draw_string(x, y + (h * 2) + s, str, "pcterm20", 0xF0F0F0);
 
-			sprintf(str, "N - Next level");
+			_bprintf(str, 100, "N - Next level");
 			draw_string(x, y + (h * 3) + s, str, "pcterm20", 0xF0F0F0);
 
-			sprintf(str, "P - Previous level");
+			_bprintf(str, 100, "P - Previous level");
 			draw_string(x, y + (h * 4) + s, str, "pcterm20", 0xF0F0F0);
 
-			sprintf(str, "R - Restart level");
+			_bprintf(str, 100, "R - Restart level");
 			draw_string(x, y + (h * 5) + s, str, "pcterm20", 0xF0F0F0);
 
-			sprintf(str, "Backspace - Undo");
+			_bprintf(str, 100, "Backspace - Undo");
 			draw_string(x, y + (h * 6) + s, str, "pcterm20", 0xF0F0F0);
 
-			sprintf(str, "Press S to start");
+			_bprintf(str, 100, "Press S to start");
 			draw_string((win_size.w / 2) - (get_string_width("pcterm20", str) / 2), 
 				(win_size.h / 2), 
 				str, "pcterm20", 0xF0F0F0);
 
-			sprintf(str, "(c) %s 2019", GAME_AUTHOR);
+			_bprintf(str, 100, "(c) %s 2019", GAME_AUTHOR);
 			draw_string(win_size.w - get_string_width("pcterm20", str) - (h / 2), win_size.h - (h / 2), str, "pcterm20", 0xF0F0F0);
 
 			break;
