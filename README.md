@@ -4,11 +4,11 @@
 
 Ресурсы положить в один из каталогов
 
-~/.ptsoko
-/usr/ptsoko/
-Прямо в каталог с бинарником.
+- ~/.ptsoko
+- /usr/ptsoko/
+- Прямо в каталог с бинарником.
 
 
-![Alt text](/screenshots/Screenshot_20190907_140900.png?raw=true "Splash screen")
-![Alt text](/screenshots/Screenshot_20190907_140952.png?raw=true "Level 1")
-![Alt text](/screenshots/Screenshot_20190907_141013.png?raw=true "Level 30")
+![Scheme](screenshots/Screenshot_20190907_140900.png)
+![Scheme](screenshots/Screenshot_20190907_140952.png)
+![Scheme](screenshots/Screenshot_20190907_141013.png)
