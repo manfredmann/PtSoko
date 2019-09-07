@@ -715,10 +715,10 @@ void Game::draw() {
 			PhPoint_t p;
 			
 			char status_level[50];
-			char status_moves[20];
+			char status_moves[12];
 
 			_bprintf(status_level, 50, "Level: %s", (const char *) level_name());
-			_bprintf(status_moves, 20,  "Moves: %4d", moves);
+			_bprintf(status_moves, 12,  "Moves: %4d", moves);
 
 			p.x = (status_height / 2) + 1;
 			p.y = win_size.h - (status_height / 2);
