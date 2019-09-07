@@ -27,7 +27,7 @@ int main(int argc, char **argv) {
 		game->init();
 		game->run();
 	} catch (Game_ex e) {
-		printf("Error: %s\n", (const char *) e.what());
+		printf("error: %s\n", (const char *) e.what());
 	}
 
 	return 0;

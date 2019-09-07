@@ -64,12 +64,13 @@ Game::Game() {
 		String err;
 
 		if (displayname) {
-			err = "Could not attach to Photon manager [" + String(displayname) + "]";
+			err = Help::Sprintf("Could not attach to Photon manager [%s]", displayname);
 		} else if ((displayname = getenv("PHOTON"))) {
-			err = "Could not attach to Photon manager (PHOTON=[" + String(displayname) +  "])";
+			err = Help::Sprintf("Could not attach to Photon manager (PHOTON=[%s]", displayname);
 		} else {
-			err = "Could not attach to Photon manager [/dev/photon]";
+			err = String("Could not attach to Photon manager [/dev/photon]");
 		}
+
 		throw Game_ex(err);
 	}
 
@@ -77,8 +78,8 @@ Game::Game() {
 
 	PgSetDrawBufferSize(0xFFFF);
 
-	block_h = 20;
-	block_w = 20;
+	block_h = GAME_BLOCK_SIZE;
+	block_w = GAME_BLOCK_SIZE;
 
 	blocks_w = 31;
 	blocks_h = 24;
@@ -177,6 +178,30 @@ Game::Game() {
 	textures.box		= PxLoadImage(strdup((const char *)textures_path[0]), &methods_box);
 	textures.box_place	= PxLoadImage(strdup((const char *)textures_path[1]), &methods_box_place);
 	textures.brick		= PxLoadImage(strdup((const char *)textures_path[2]), &methods_brick);
+
+	if (textures.box->size.w > GAME_BLOCK_SIZE) {
+		throw Game_ex(Help::Sprintf("Texture width couldn't be high then %d", GAME_BLOCK_SIZE));
+	}
+
+	if (textures.box_place->size.w > GAME_BLOCK_SIZE) {
+		throw Game_ex(Help::Sprintf("Texture width couldn't be high then %d", GAME_BLOCK_SIZE));
+	}
+
+	if (textures.brick->size.w > GAME_BLOCK_SIZE) {
+		throw Game_ex(Help::Sprintf("Texture width couldn't be high then %d", GAME_BLOCK_SIZE));
+	}
+
+	if (textures.box->size.h > GAME_BLOCK_SIZE) {
+		throw Game_ex(Help::Sprintf("Texture height couldn't be high then %d", GAME_BLOCK_SIZE));
+	}
+
+	if (textures.box_place->size.h > GAME_BLOCK_SIZE) {
+		throw Game_ex(Help::Sprintf("Texture height couldn't be high then %d", GAME_BLOCK_SIZE));
+	}
+
+	if (textures.brick->size.h > GAME_BLOCK_SIZE) {
+		throw Game_ex(Help::Sprintf("Texture height couldn't be high then %d", GAME_BLOCK_SIZE));
+	}
 
 	state				= STATE_INIT;
 	level_current		= 0;
@@ -310,7 +335,7 @@ void Game::init() {
 				++width;
 
 				if (width > blocks_w) {
-					throw Game_ex("Broken level file. Level width to high\n");
+					throw Game_ex(Help::Sprintf("Broken level file. Level width to high. Must be <= %d", blocks_w));
 				}
 			}
 
@@ -318,31 +343,32 @@ void Game::init() {
 			++height;
 
 			if (height > blocks_h) {
-				throw Game_ex("Broken level file. Level height to high\n");
+				throw Game_ex(Help::Sprintf("Broken level file. Level height to high. Must be <= %d", blocks_h));
 			}
+
 			level += '\n';
 		}
 
 		fclose(level_file);
 
 		if (player == 0) {
-			throw Game_ex("Broken level file. Player = 0\n");
+			throw Game_ex("Broken level file. Player = 0");
 		}
 
 		if (boxes == 0) {
-			throw Game_ex("Broken level file. Box = 0\n");
+			throw Game_ex("Broken level file. Box = 0");
 		}
 
 		if (box_places == 0) {
-			throw Game_ex("Broken level file. Box_place = 0\n");
+			throw Game_ex("Broken level file. Box_place = 0");
 		}
 
 		if (boxes != box_places) {
-			throw Game_ex("Broken level file. Box != Box_place\n");
+			throw Game_ex("Broken level file. Box != Box_place");
 		}
 
 		if (player > 1) {
-			throw Game_ex("Broken level file. Player > 1\n");
+			throw Game_ex("Broken level file. Player > 1");
 		}
 
 		level = fname + ";" + level;
@@ -484,7 +510,7 @@ void Game::player_move(Player *player, direction_t dir) {
 
 			for (size_t i = 0; i < objects.entries(); ++i) {
 
-				Object *	object		= objects[i];
+				Object *		object	= objects[i];
 				object_pos_t	obj_pos = object->get_pos();
 
 				switch(object->get_type()) {
@@ -702,6 +728,7 @@ void Game::draw() {
 				Object *object = objects[i];
 				object->draw();
 			}
+			break;
 		}
 	}
 
@@ -710,7 +737,7 @@ void Game::draw() {
 
 	PtArg_t args[1];
 	PtSetArg( &args[0], Pt_ARG_LABEL_DATA, buf_draw, sizeof(*buf_draw));
-	PtSetResources( label, 1, args );
+	PtSetResources(label, 1, args);
 }
 
 static int Game::keyboard_callback(PtWidget_t *widget, void *data, PtCallbackInfo_t *info) {
@@ -778,16 +805,16 @@ void Game::level_load(size_t index) {
 	String level = String(levels[level_current], name_index + 1);
 
 	size_t 			i;
-	unsigned int	x		= 0;
-	unsigned int	y		= 0;
+	unsigned int	x			= 0;
+	unsigned int	y			= 0;
 	
-	unsigned int	x_max	= 0;
-	unsigned int	y_max	= 0;
+	unsigned int	x_max		= 0;
+	unsigned int	y_max		= 0;
 	
-	unsigned int 	x_offset = 0;
-	unsigned int	y_offset = 0;
+	unsigned int 	x_offset	= 0;
+	unsigned int	y_offset	= 0;
 
-	unsigned int	step	= 20;
+	unsigned int	step		= GAME_BLOCK_SIZE;
 
 	Player *		player		= NULL;
 

@@ -37,6 +37,7 @@
 #include "box.h"
 #include "box_place.h"
 #include "player.h"
+#include "help"
 
 #define PkIsReleased( f ) ((f & (Pk_KF_Key_Down|Pk_KF_Key_Repeat)) == 0)
 
@@ -45,8 +46,9 @@ typedef WCValSortedVector<String>			levels_t;
 typedef WCValOrderedVector<Object *>		objects_t;
 typedef WCValOrderedVector<objects_pos_t *>	story_t;
 
-#define GAME_AUTHOR		"Roman Serov"
-#define GAME_VERSION	0.1
+#define GAME_AUTHOR			"Roman Serov"
+#define GAME_VERSION		0.2
+#define GAME_BLOCK_SIZE		20
 
 typedef enum {
 	STATE_INIT,

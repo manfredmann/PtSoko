@@ -1,6 +1,6 @@
 TARGET = PtSoko
 SRCDIR = ./src/
-SRCS = box.cpp box_place.cpp object.cpp brick.cpp player.cpp game.cpp main.cpp
+SRCS = help.cpp box.cpp box_place.cpp object.cpp brick.cpp player.cpp game.cpp main.cpp
 BINDIR = ./bin/
 OBJDIR = ./obj/
 OBJS = $(SRCS:.cpp=.o)
