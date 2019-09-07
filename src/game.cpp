@@ -24,17 +24,17 @@
 
 static void *img_memory_allocate(long nbytes, int type) {
 	if( type == PX_IMAGE ) {
-		return( PgShmemCreate( nbytes, NULL ) );
+		return PgShmemCreate( nbytes, NULL);
 	} else {
-		return( calloc( 1, nbytes ) );
+		return calloc(1,nbytes);
 	}
 }
 
 static void *img_memory_free(void *memory, int type) {
 	if (type == PX_IMAGE) {
-		PgShmemDestroy( memory );
+		PgShmemDestroy(memory);
 	} else {
-		free( memory );
+		free(memory);
 	}
 
 	return NULL;
@@ -140,19 +140,19 @@ Game::Game() {
 	memset(&methods_box, 0, sizeof(PxMethods_t));
 	memset(&methods_box_place, 0, sizeof(PxMethods_t));
 
-	methods_brick.px_alloc		= img_memory_allocate;
-	methods_brick.px_free		= img_memory_free;
-	methods_brick.px_warning	= img_warning;
-	methods_brick.px_error		= img_error;
-	methods_brick.px_progress	= img_progress;
-	methods_brick.flags			= PX_LOAD;
+	methods_brick.px_alloc			= img_memory_allocate;
+	methods_brick.px_free			= img_memory_free;
+	methods_brick.px_warning		= img_warning;
+	methods_brick.px_error			= img_error;
+	methods_brick.px_progress		= img_progress;
+	methods_brick.flags				= PX_LOAD;
 
-	methods_box.px_alloc		= img_memory_allocate;
-	methods_box.px_free			= img_memory_free;
-	methods_box.px_warning		= img_warning;
-	methods_box.px_error		= img_error;
-	methods_box.px_progress		= img_progress;
-	methods_box.flags			= PX_LOAD;
+	methods_box.px_alloc			= img_memory_allocate;
+	methods_box.px_free				= img_memory_free;
+	methods_box.px_warning			= img_warning;
+	methods_box.px_error			= img_error;
+	methods_box.px_progress			= img_progress;
+	methods_box.flags				= PX_LOAD;
 
 	methods_box_place.px_alloc		= img_memory_allocate;
 	methods_box_place.px_free		= img_memory_free;
@@ -714,15 +714,20 @@ void Game::draw() {
 		case STATE_GAME: {
 			PhPoint_t p;
 			
-			char status_str[1024];
-			sprintf(status_str, "Level: %s   Moves: %d", (const char *) level_name(), moves);
+			char status_level[50];
+			char status_moves[20];
+
+			_bprintf(status_level, 50, "Level: %s", (const char *) level_name());
+			_bprintf(status_moves, 20,  "Moves: %4d", moves);
 
 			p.x = (status_height / 2) + 1;
 			p.y = win_size.h - (status_height / 2);
 
-			PgSetFont(status_font);
-			PgSetTextColor(0xF0F0F0);
-			PgDrawText(status_str, strlen(status_str), &p, 0);
+			draw_string(p.x, p.y, status_level, status_font, 0xF0F0F0);
+
+			p.x = win_size.w - get_string_width(status_font, status_moves) - ((status_height / 2) + 1);
+
+			draw_string(p.x, p.y, status_moves, status_font, 0xF0F0F0);
 
 			for (size_t i = 0; i < objects.entries(); ++i) {
 				Object *object = objects[i];
