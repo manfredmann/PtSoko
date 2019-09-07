@@ -342,7 +342,7 @@ void Game::init() {
 		}
 
 		if (player > 1) {
-			throw Game_ex("Broken level file. Player > 0\n");
+			throw Game_ex("Broken level file. Player > 1\n");
 		}
 
 		level = fname + ";" + level;
