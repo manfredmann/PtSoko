@@ -8,7 +8,12 @@
 - /usr/ptsoko/
 - Прямо в каталог с бинарником.
 
+Собирать можно прямо под QNX'ом.
+
+А теперь снимки:
 
 ![Scheme](screenshots/Screenshot_20190907_140900.png)
+
 ![Scheme](screenshots/Screenshot_20190907_140952.png)
+
 ![Scheme](screenshots/Screenshot_20190907_141013.png)
