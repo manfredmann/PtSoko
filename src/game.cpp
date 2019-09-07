@@ -179,28 +179,28 @@ Game::Game() {
 	textures.box_place	= PxLoadImage(strdup((const char *)textures_path[1]), &methods_box_place);
 	textures.brick		= PxLoadImage(strdup((const char *)textures_path[2]), &methods_brick);
 
-	if (textures.box->size.w > GAME_BLOCK_SIZE) {
-		throw Game_ex(Help::Sprintf("Texture width couldn't be high then %d", GAME_BLOCK_SIZE));
+	if (textures.box->size.w != GAME_BLOCK_SIZE) {
+		throw Game_ex(Help::Sprintf("Texture width must be: %d", GAME_BLOCK_SIZE));
 	}
 
-	if (textures.box_place->size.w > GAME_BLOCK_SIZE) {
-		throw Game_ex(Help::Sprintf("Texture width couldn't be high then %d", GAME_BLOCK_SIZE));
+	if (textures.box_place->size.w != GAME_BLOCK_SIZE) {
+		throw Game_ex(Help::Sprintf("Texture width must be: %d", GAME_BLOCK_SIZE));
 	}
 
-	if (textures.brick->size.w > GAME_BLOCK_SIZE) {
-		throw Game_ex(Help::Sprintf("Texture width couldn't be high then %d", GAME_BLOCK_SIZE));
+	if (textures.brick->size.w != GAME_BLOCK_SIZE) {
+		throw Game_ex(Help::Sprintf("Texture width must be: %d", GAME_BLOCK_SIZE));
 	}
 
-	if (textures.box->size.h > GAME_BLOCK_SIZE) {
-		throw Game_ex(Help::Sprintf("Texture height couldn't be high then %d", GAME_BLOCK_SIZE));
+	if (textures.box->size.h != GAME_BLOCK_SIZE) {
+		throw Game_ex(Help::Sprintf("Texture height must be: %d", GAME_BLOCK_SIZE));
 	}
 
-	if (textures.box_place->size.h > GAME_BLOCK_SIZE) {
-		throw Game_ex(Help::Sprintf("Texture height couldn't be high then %d", GAME_BLOCK_SIZE));
+	if (textures.box_place->size.h != GAME_BLOCK_SIZE) {
+		throw Game_ex(Help::Sprintf("Texture height must be %d", GAME_BLOCK_SIZE));
 	}
 
-	if (textures.brick->size.h > GAME_BLOCK_SIZE) {
-		throw Game_ex(Help::Sprintf("Texture height couldn't be high then %d", GAME_BLOCK_SIZE));
+	if (textures.brick->size.h != GAME_BLOCK_SIZE) {
+		throw Game_ex(Help::Sprintf("Texture height must be %d", GAME_BLOCK_SIZE));
 	}
 
 	state				= STATE_INIT;
