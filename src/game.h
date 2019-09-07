@@ -96,7 +96,6 @@ class Game {
 
 		void 				init();
 		void				run();
-		void 				key_process(unsigned int key);
 
 	private:
 		Game();
@@ -153,6 +152,8 @@ class Game {
 		void				story_add(bool player_only);
 		void				story_back();
 		void				story_clear();
+
+		void 				key_process(unsigned int key);
 		
 		static int			keyboard_callback(PtWidget_t *widget, void *data, PtCallbackInfo_t *info);
 };
