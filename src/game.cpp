@@ -90,14 +90,12 @@ Game::Game() {
 	PtArg_t		args_win[10];
 	PtArg_t		args_lbl[6];
 
-	PhPoint_t	dbc_pos = {0, 0};
-	PhDim_t		dim		= {win_size.w, win_size.h};
 	PhArea_t	area	= {0, 0, win_size.w, win_size.h};
 
-	PtSetArg(&args_win[0], Pt_ARG_MIN_WIDTH, dim.w, 0);
-	PtSetArg(&args_win[1], Pt_ARG_MIN_HEIGHT, dim.h, 0);
-	PtSetArg(&args_win[3], Pt_ARG_MAX_HEIGHT, dim.w, 0);
-	PtSetArg(&args_win[4], Pt_ARG_MAX_WIDTH,  dim.h, 0);
+	PtSetArg(&args_win[0], Pt_ARG_MIN_WIDTH, area.size.w, 0);
+	PtSetArg(&args_win[1], Pt_ARG_MIN_HEIGHT, area.size.h, 0);
+	PtSetArg(&args_win[3], Pt_ARG_MAX_HEIGHT, area.size.w, 0);
+	PtSetArg(&args_win[4], Pt_ARG_MAX_WIDTH,  area.size.h, 0);
 	PtSetArg(&args_win[5], Pt_ARG_WINDOW_TITLE, "Sokoban", 0);
 	PtSetArg(&args_win[6], Pt_ARG_WINDOW_RENDER_FLAGS,
 		Ph_WM_RENDER_ASAPP |
@@ -117,8 +115,8 @@ Game::Game() {
 
 	buf_draw		= new PhImage_t;
 	buf_draw->type	= Pg_IMAGE_DIRECT_888;
-	buf_draw->size	= dim;
-	buf_draw->image = (char *) PgShmemCreate(dim.w * dim.h * 3, NULL);
+	buf_draw->size	= area.size;
+	buf_draw->image = (char *) PgShmemCreate(area.size.w * area.size.h * 3, NULL);
 
 	PtSetArg(&args_lbl[0], Pt_ARG_LABEL_TYPE, Pt_IMAGE, 0 );
 	PtSetArg(&args_lbl[1], Pt_ARG_AREA, &area, 0 );
@@ -647,7 +645,6 @@ unsigned int Game::get_string_height(char *font, char *str) {
 	return rect.lr.y - rect.ul.y + 1;
 }
 
-
 void Game::draw() {
 	PmMemStart(mc);
 
@@ -691,7 +688,7 @@ void Game::draw() {
 				(win_size.h / 2), 
 				str, "pcterm20", 0xF0F0F0);
 
-			_bprintf(str, 100, "(c) %s 2019", GAME_AUTHOR);
+			_bprintf(str, 100, "(C) %s 2019", GAME_AUTHOR);
 			draw_string(win_size.w - get_string_width("pcterm20", str) - (h / 2), win_size.h - (h / 2), str, "pcterm20", 0xF0F0F0);
 
 			break;
