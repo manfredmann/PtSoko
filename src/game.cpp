@@ -96,7 +96,7 @@ Game::Game() {
 	PtAddEventHandler(window, Ph_EV_KEY, &keyboard_callback, NULL);
 
 	buf_draw		= new PhImage_t;
-	buf_draw->type	= Pg_IMAGE_PALETTE_BYTE;
+	buf_draw->type	= Pg_IMAGE_DIRECT_888;
 	buf_draw->size	= dim;
 	buf_draw->image = (char *) PgShmemCreate(dim.w * dim.h * 3, NULL);
 
@@ -109,7 +109,7 @@ Game::Game() {
 
 	label = PtCreateWidget(PtLabel, window, 6, args_lbl);
 
-	PhPoint_t translation = { 0, 0 }, center, radii;
+	PhPoint_t translation = { 0, 0 };
 	mc = PmMemCreateMC(buf_draw, &win_size, &translation);
 
 	PxMethods_t methods_brick;
@@ -141,30 +141,82 @@ Game::Game() {
 	methods_box_place.px_progress	= img_progress;
 	methods_box_place.flags			= PX_LOAD;
 
-	textures.box		= PxLoadImage("textures/box.bmp", &methods_box);//PxLoadImage("textures/box.bmp", NULL);
-	textures.box_place	= PxLoadImage("textures/box_place.bmp", &methods_box_place);
-	textures.brick		= PxLoadImage("textures/brick.bmp", &methods_brick);
+	soko_home[0] = String(String(getenv("HOME")) + "/.ptsoko/");
+	soko_home[1] = String("/usr/ptsoko/");
+	soko_home[2] = String("./");
 
-	state			= STATE_INIT;
-	level_current	= 0;
+	String textures_path[3];
 
-	status_font		= new char[strlen("pcterm14")];
+	textures_path[0] = texture_find("box.bmp");
+	textures_path[1] = texture_find("box_place.bmp");
+	textures_path[2] = texture_find("brick.bmp");
+
+	if (textures_path[0].length() == 0 || textures_path[1].length() == 0 || textures_path[2].length() == 0) {
+		throw Game_ex("Textures not found");
+	}
+
+	textures.box		= PxLoadImage(strdup((const char *)textures_path[0]), &methods_box);
+	textures.box_place	= PxLoadImage(strdup((const char *)textures_path[1]), &methods_box_place);
+	textures.brick		= PxLoadImage(strdup((const char *)textures_path[2]), &methods_brick);
+
+	state				= STATE_INIT;
+	level_current		= 0;
+
+	status_font			= new char[strlen("pcterm14")];
 	strcpy(status_font, "pcterm14");
-	status_height	= get_string_height(status_font, "Status");
+	status_height		= get_string_height(status_font, "Status");
 
 	PtRealizeWidget(window);
 	app = PtDefaultAppContext();
 
 }
 
-void Game::init() {
-	DIR *dir;
-	struct dirent *entry;
+String Game::texture_find(String path) {
+	String texture_path;
 
-	dir = opendir("levels/");
+	for (size_t i = 0; i < 3; ++i) {
+		texture_path = String(soko_home[i] + "textures/" + path);
+		FILE *f = fopen((const char *) texture_path, "r");
+
+		if (f == NULL) {
+			printf("error: Couldn't open file \"%s\"\n", (const char *)texture_path);
+			texture_path = String("");
+			continue;
+		} else {
+			printf("Texture: %s OK\n",  (const char *)texture_path);
+			fclose(f);
+			break;
+		}
+	}
+
+	return texture_path;
+}
+
+void Game::init() {
+	DIR *dir = NULL;
+	struct dirent *entry;
+	String levels_path[3];
+	String levels_dir;
+
+	levels_path[0] = String(soko_home[0] + "levels/");
+	levels_path[1] = String(soko_home[1] + "levels/");
+	levels_path[2] = String(soko_home[2] + "levels/");
+
+	for (size_t i = 0; i < 3; ++i) {
+		printf("Searching levels at \"%s\"\n", (const char *)levels_path[i]);
+		dir = opendir((const char *)levels_path[i]);
+
+		if (!dir) {
+			printf("Couldn't open levels directory\n");
+		} else {
+			levels_dir = levels_path[i];
+			printf("OK\n");
+			break;
+		}
+	}
 
 	if (!dir) {
-		throw Game_ex("Couldn't open levels directory");
+		throw Game_ex("Levels not found\n");
 	}
 
 	while ((entry = readdir(dir)) != NULL) {
@@ -177,12 +229,12 @@ void Game::init() {
 		}
 
 		printf("Loading %s: ", (const char *) fname);
-		fname = "levels/" + fname;
+		fname = levels_dir + fname;
 
 		FILE *level_file = fopen((const char *) fname, "r");
 
 		if (level_file == NULL) {
-			printf("error: Couldn't open file\n");
+			printf("error: Couldn't open file \"%s\"\n", (const char *)fname);
 			continue;
 		}
 
@@ -552,7 +604,7 @@ unsigned int Game::get_string_height(char *font, char *str) {
 
 
 void Game::draw() {
-	PmMemStart( mc );
+	PmMemStart(mc);
 
 	PgSetFillColor(0x0A0A0A);
 	PgDrawIRect(0, 0, win_size.w, win_size.h, Pg_DRAW_FILL );

@@ -89,6 +89,8 @@ class Game {
 		unsigned int		blocks_w;
 		unsigned int 		blocks_h;
 
+		String 				soko_home[3];
+
 		PhDim_t				win_size;
 		PtAppContext_t		app;
 		PtWidget_t *		window;
@@ -113,6 +115,8 @@ class Game {
 		char *				status_font;
 
 		void 				set_state(game_state_t state);
+
+		String				texture_find(String path);
 
 		void				level_load(size_t index);
 		void				level_unload();
