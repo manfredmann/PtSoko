@@ -26,7 +26,7 @@ static void *img_memory_allocate(long nbytes, int type) {
 	if( type == PX_IMAGE ) {
 		return PgShmemCreate( nbytes, NULL);
 	} else {
-		return calloc(1,nbytes);
+		return calloc(1, nbytes);
 	}
 }
 
@@ -447,7 +447,6 @@ void Game::story_back() {
 			obj->set_pos(pos->x, pos->y);
 		}
 	}
-
 
 	//Restore Player position
 	object_pos_t *pos = (*last_move)[last_move->entries() - 1];
