@@ -503,7 +503,7 @@ void Game::player_move(Player *player, direction_t dir) {
 
 	if (is_move_correct) {
 		if (box != NULL) {
-			object_pos_t box_pos_next = box->move_calc(dir, player_pos_next.x, player_pos_next.y);
+			object_pos_t box_pos_next = box->move_calc(dir);
 
 			for (size_t i = 0; i < objects.entries(); ++i) {
 
@@ -525,7 +525,7 @@ void Game::player_move(Player *player, direction_t dir) {
 				}
 			}
 			story_add(false);
-			box->move(dir, player_pos_next.x, player_pos_next.y);
+			box->move(dir);
 		} else {
 			story_add(true);
 		}

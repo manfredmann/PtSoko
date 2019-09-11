@@ -63,24 +63,24 @@ object_pos_t Box::get_pos() {
 	return pos;
 }
 
-object_pos_t Box::move_calc(direction_t dir, unsigned int x, unsigned int y) {
+object_pos_t Box::move_calc(direction_t dir) {
 	object_pos_t pos_next = pos;
 
 	switch(dir) {
 		case DIRECTION_UP: {
-			pos_next.y = y - pos.h - 1;
+			pos_next.y = pos_next.y - pos.h - 1;
 			break;
 		}
 		case DIRECTION_DOWN: {
-			pos_next.y = y + pos.h + 1;
+			pos_next.y = pos_next.y + pos.h + 1;
 			break;
 		}
 		case DIRECTION_LEFT: {
-			pos_next.x = x - pos.w - 1;
+			pos_next.x = pos_next.x - pos.w - 1;
 			break;
 		}
 		case DIRECTION_RIGHT: {
-			pos_next.x = x + pos.w + 1;
+			pos_next.x = pos_next.x + pos.w + 1;
 			break;
 		}
 	}
@@ -89,6 +89,6 @@ object_pos_t Box::move_calc(direction_t dir, unsigned int x, unsigned int y) {
 }
 
 
-void Box::move(direction_t dir, unsigned int x, unsigned int y) {
-	pos = move_calc(dir, x, y);
+void Box::move(direction_t dir) {
+	pos = move_calc(dir);
 }

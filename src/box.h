@@ -31,8 +31,8 @@ class Box : public Object {
 		object_type_t	get_type();
 		void			set_pos(unsigned int x, unsigned int y);
 		
-		object_pos_t	move_calc(direction_t dir, unsigned int x, unsigned int y);
-		void 			move(direction_t dir, unsigned int x, unsigned int y);
+		object_pos_t	move_calc(direction_t dir);
+		void 			move(direction_t dir);
 
 		object_pos_t	get_pos();
 
