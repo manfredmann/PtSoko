@@ -1,0 +1,12 @@
+local:
+  project_name: "PtSoko"
+  project_dirs: 
+    - src
+    - inc
+    - obj
+    - bin
+  project_files:
+    - Makefile
+remote:
+  host: "qnx4vm"
+  projects_path: "/root/projects"
