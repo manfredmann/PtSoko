@@ -11,6 +11,8 @@ remote:
   host: "qnx4vm"
   projects_path: "/root/projects"
 build:
-  cmd_pre: "make clean"
+  cmd_pre: ""
   cmd_build: "make"
   cmd_post: ""
+  cmd_clean: "make clean"
+ 
