@@ -1,4 +1,5 @@
 /*
+* PtSoko - Sokoban for QNX4.25/Photon
 * Copyright (C) 2019 Roman Serov <roman@serov.co>
 *
 * This file is part of Sokoban for QNX4.25/Photon.
@@ -658,7 +659,7 @@ void Game::draw() {
 			unsigned int	x;
 			unsigned int 	y;
 
-			sprintf(str, "Sokoban for QNX4.25/Photon v%.1f", GAME_VERSION);
+			sprintf(str, "Sokoban for QNX4.25/Photon v%s", GAME_VERSION);
 			h = get_string_height("pcterm20", str);
 
 			x = h / 2;

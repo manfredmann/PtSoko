@@ -1,4 +1,5 @@
 /*
+* PtSoko - Sokoban for QNX4.25/Photon
 * Copyright (C) 2019 Roman Serov <roman@serov.co>
 *
 * This file is part of Sokoban for QNX4.25/Photon.

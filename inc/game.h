@@ -1,4 +1,5 @@
 /*
+* PtSoko - Sokoban for QNX4.25/Photon
 * Copyright (C) 2019 Roman Serov <roman@serov.co>
 *
 * This file is part of Sokoban for QNX4.25/Photon.
@@ -47,7 +48,7 @@ typedef WCValOrderedVector<Object *>		objects_t;
 typedef WCValOrderedVector<objects_pos_t *>	story_t;
 
 #define GAME_AUTHOR			"Roman Serov"
-#define GAME_VERSION		0.2
+#define GAME_VERSION		"0.2.1"
 #define GAME_BLOCK_SIZE		20
 
 typedef enum {
