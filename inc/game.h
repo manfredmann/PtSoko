@@ -102,6 +102,8 @@ class Game {
 
 	private:
 		Game();
+		~Game();
+		
 		Game& operator=( Game& );
 
 		unsigned int		block_h;

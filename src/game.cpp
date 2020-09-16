@@ -23,6 +23,8 @@
 #include <stdio.h>
 #include <time.h>
 
+static char *img_mem;
+
 static void *img_memory_allocate(long nbytes, int type) {
 	if( type == PX_IMAGE ) {
 		return PgShmemCreate( nbytes, NULL);
@@ -117,7 +119,7 @@ Game::Game() {
 	buf_draw		= new PhImage_t;
 	buf_draw->type	= Pg_IMAGE_DIRECT_888;
 	buf_draw->size	= area.size;
-	buf_draw->image = (char *) PgShmemCreate(area.size.w * area.size.h * 3, NULL);
+	buf_draw->image = new char[area.size.w * area.size.h * 3];
 
 	PtSetArg(&args_lbl[0], Pt_ARG_LABEL_TYPE, Pt_IMAGE, 0 );
 	PtSetArg(&args_lbl[1], Pt_ARG_AREA, &area, 0 );
@@ -212,6 +214,9 @@ Game::Game() {
 	PtRealizeWidget(window);
 	app = PtDefaultAppContext();
 
+}
+
+Game::~Game() {
 }
 
 String Game::texture_find(String path) {
