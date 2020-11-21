@@ -21,75 +21,91 @@
 #include "box.h"
 
 Box::Box(unsigned int x, unsigned int y, unsigned int w, unsigned int h, PhImage_t *texture) {
-	this->pos.x = x;
-	this->pos.y = y;
-	this->pos.w = w;
-	this->pos.h = h;
+    this->pos.x = x;
+    this->pos.y = y;
+    this->pos.w = w;
+    this->pos.h = h;
 
-	this->texture = texture;
+    this->texture = texture;
+    this->is_changed = true;
 }
 
 void Box::draw() {
-	PhRect_t  rect;
+    if (is_changed) {
+        PhRect_t  rect;
 
-	rect.ul.x = pos.x;
-	rect.ul.y = pos.y;
-	rect.lr.x = pos.x + pos.w;
-	rect.lr.y = pos.y + pos.h;
+        rect.ul.x = pos.x;
+        rect.ul.y = pos.y;
+        rect.lr.x = pos.x + pos.w;
+        rect.lr.y = pos.y + pos.h;
 
-	PgSetUserClip(&rect);
+        PgSetUserClip(&rect);
 
-	if (texture == NULL) {
-		PgSetFillColor(0xAA5500);
-		PgDrawIRect(pos.x, pos.y, pos.x + pos.w, pos.y + pos.h, Pg_DRAW_FILL);
-	} else {
-		PhPoint_t    p = { pos.x, pos.y };
-//		PgDrawPhImagemx(&p, texture, NULL);
-		PgDrawImagemx(texture->image, texture->type, &p, &texture->size, texture->bpl, 0 );
-	}
+        if (texture == NULL) {
+            PgSetFillColor(0xAA5500);
+            PgDrawIRect(pos.x, pos.y, pos.x + pos.w, pos.y + pos.h, Pg_DRAW_FILL);
+        } else {
+            PhPoint_t    p = { pos.x, pos.y };
 
-	PtClipRemove();
+            PgDrawImagemx(texture->image, texture->type, &p, &texture->size, texture->bpl, 0 );
+        }
+
+        is_changed = false;
+    }
+
+    PtClipRemove();
 }
 
 object_type_t Box::get_type() {
-	return OBJECT_BOX;
+    return OBJECT_BOX;
 }
 
 void Box::set_pos(unsigned int x, unsigned int y) {
-	this->pos.x = x;
-	this->pos.y = y;
+    this->pos.x = x;
+    this->pos.y = y;
+
+    is_changed = true;
 }
 
 object_pos_t Box::get_pos() {
-	return pos;
+    return pos;
 }
 
 object_pos_t Box::move_calc(direction_t dir) {
-	object_pos_t pos_next = pos;
+    object_pos_t pos_next = pos;
 
-	switch(dir) {
-		case DIRECTION_UP: {
-			pos_next.y = pos_next.y - pos.h - 1;
-			break;
-		}
-		case DIRECTION_DOWN: {
-			pos_next.y = pos_next.y + pos.h + 1;
-			break;
-		}
-		case DIRECTION_LEFT: {
-			pos_next.x = pos_next.x - pos.w - 1;
-			break;
-		}
-		case DIRECTION_RIGHT: {
-			pos_next.x = pos_next.x + pos.w + 1;
-			break;
-		}
-	}
+    switch(dir) {
+        case DIRECTION_UP: {
+            pos_next.y = pos_next.y - pos.h - 1;
+            break;
+        }
+        case DIRECTION_DOWN: {
+            pos_next.y = pos_next.y + pos.h + 1;
+            break;
+        }
+        case DIRECTION_LEFT: {
+            pos_next.x = pos_next.x - pos.w - 1;
+            break;
+        }
+        case DIRECTION_RIGHT: {
+            pos_next.x = pos_next.x + pos.w + 1;
+            break;
+        }
+    }
 
-	return pos_next;
+    return pos_next;
 }
 
-
 void Box::move(direction_t dir) {
-	pos = move_calc(dir);
+    pos = move_calc(dir);
+
+    is_changed = true;
+}
+
+void Box::set_changed() {
+    is_changed = true;
+}
+
+bool Box::get_changed() {
+    return is_changed;
 }

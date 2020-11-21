@@ -1,6 +1,6 @@
 /*
 * PtSoko - Sokoban for QNX4.25/Photon
-* Copyright (C) 2019 Roman Serov <roman@serov.co>
+* Copyright (C) 2019-2020 Roman Serov <roman@serov.co>
 *
 * This file is part of Sokoban for QNX4.25/Photon.
 * 
@@ -31,44 +31,49 @@
 
 #include <photon/PxImage.h>
 
-typedef unsigned char bool;
-#define true 1
-#define false 0
+#include <bool.h>
+#include <wcvector.h>
 
 typedef enum {
-	DIRECTION_UP,
-	DIRECTION_DOWN,
-	DIRECTION_LEFT,
-	DIRECTION_RIGHT,
+    DIRECTION_UP,
+    DIRECTION_DOWN,
+    DIRECTION_LEFT,
+    DIRECTION_RIGHT,
 } direction_t;
 
 typedef enum {
-	OBJECT_BRICK,
-	OBJECT_BOX,
-	OBJECT_BOXPLACE,
-	OBJECT_PLAYER,
+    OBJECT_BRICK,
+    OBJECT_BOX,
+    OBJECT_BOXPLACE,
+    OBJECT_PLAYER,
+    OBJECT_BACKGROUND,
 } object_type_t;
 
 typedef struct {
-	unsigned int x;
-	unsigned int y;
-	unsigned int w;
-	unsigned int h;
+    unsigned int x;
+    unsigned int y;
+    unsigned int w;
+    unsigned int h;
 } object_pos_t;
 
 class Object {
-	public:
-		Object() {
+    public:
+        Object() {
 
-		}
+        }
 
-		virtual void 			draw();
-		virtual object_type_t	get_type();
-		virtual void			set_pos(unsigned int x, unsigned int y);
-		virtual object_pos_t	get_pos();
+        virtual void            draw();
+        virtual object_type_t   get_type();
+        virtual void            set_pos(unsigned int x, unsigned int y);
+        virtual object_pos_t    get_pos();
 
-	private:
+        virtual void            set_changed();
+        virtual bool            get_changed();
+
+    private:
 
 };
+
+typedef WCValOrderedVector<Object *> objects_t;
 
 #endif

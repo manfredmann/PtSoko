@@ -1,0 +1,48 @@
+TARGET = PtSoko
+SRCDIR = ./src/
+SRCS =	debug.cpp \
+				palette.cpp \
+				level.cpp \
+				help.cpp \
+				level_preview.cpp \
+				level_background.cpp \
+				box.cpp \
+				box_place.cpp \
+				object.cpp \
+				brick.cpp \
+				player.cpp \
+				game.cpp \
+				timer.cpp \
+				menu.cpp \
+				resources.cpp	\
+				respack.cpp \
+				main_game.cpp
+
+BINDIR = ./bin/
+OBJDIR = ./obj/
+OBJS = $(SRCS:.cpp=.o)
+CC = cc
+INCLUDEDIRS += ./inc
+INCLUDEDIRS += ./lib/qnx4opts/inc
+
+LIBS = photon
+LIBS += /qnx4/phtk/lib/phrender_s.lib /qnx4/phtk/lib/phexlib3r.lib
+LIBS += lib/qnx4opts/bin/qnx4opts.a
+
+CFLAGS = -Oentx -ms -s -w1 -5r, -WC,-xss \
+							$(addprefix -I, $(INCLUDEDIRS))
+LDFLAGS = -M -N 64k \
+							$(addprefix -l, $(LIBS))
+
+.PHONY:				all clean
+
+all:					$(BINDIR)$(TARGET)
+
+clean:
+							-rm -f $(OBJDIR)*.o $(BINDIR)$(TARGET) $(BINDIR)*.map *.err 
+
+$(OBJDIR)%.o : $(SRCDIR)%.cpp
+							$(CC) $(CFLAGS) -c -o $@ $<
+
+$(BINDIR)$(TARGET): 	$(addprefix $(OBJDIR), 	$(OBJS))
+							$(CC) $(LDFLAGS) -o $@ $^

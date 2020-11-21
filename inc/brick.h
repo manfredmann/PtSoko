@@ -24,20 +24,25 @@
 #include "object.h"
 
 class Brick : public Object {
-	public:
-		Brick(unsigned int x, unsigned int y, unsigned int w, unsigned int h, PhImage_t *texture);
-		void			draw();
+    public:
+        Brick(unsigned int x, unsigned int y, unsigned int w, unsigned int h, PhImage_t *texture);
+        void            draw();
 
-		object_type_t	get_type();
-		void			set_pos(unsigned int x, unsigned int y);
+        object_type_t   get_type();
+        void            set_pos(unsigned int x, unsigned int y);
 
-		object_pos_t	get_pos();
-		void 			set_color(unsigned int);
+        object_pos_t    get_pos();
+        void            set_color(unsigned int);
 
-	private:
-		object_pos_t 	pos;
-		PhImage_t *		texture;
-		unsigned int	color;
+        void            set_changed();
+        bool            get_changed();
+
+    private:
+        object_pos_t    pos;
+        PhImage_t *     texture;
+        unsigned int    color;
+
+        bool            is_changed;
 };
 
 #endif

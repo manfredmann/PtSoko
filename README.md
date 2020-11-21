@@ -2,18 +2,10 @@
 
 Захотелось мне как-то поиграть в сокобан под QNX'ом (что уже само по себе странно), и я с удвилением обнаружил, что его нет.
 
-Ресурсы положить в один из каталогов
+А теперь, слайды:
 
-- ~/.ptsoko
-- /usr/ptsoko/
-- Прямо в каталог с бинарником.
+![Scheme](screenshots/Screenshot_20201121_134356.png)
 
-Собирать можно прямо под QNX'ом.
+![Scheme](screenshots/Screenshot_20201121_134417.png)
 
-А теперь снимки:
-
-![Scheme](screenshots/Screenshot_20190907_140900.png)
-
-![Scheme](screenshots/Screenshot_20190907_140952.png)
-
-![Scheme](screenshots/Screenshot_20190907_141013.png)
+![Scheme](screenshots/Screenshot_20201121_134430.png)

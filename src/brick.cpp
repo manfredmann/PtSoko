@@ -22,50 +22,63 @@
 #include <stdio.h>
 
 Brick::Brick(unsigned int x, unsigned int y, unsigned int w, unsigned int h, PhImage_t *texture) {
-	this->pos.x = x;
-	this->pos.y = y;
-	this->pos.w = w;
-	this->pos.h = h;
-	this->color = 0xAA0000;
-	this->texture = texture;
+    this->pos.x = x;
+    this->pos.y = y;
+    this->pos.w = w;
+    this->pos.h = h;
+    this->color = 0xAA0000;
+    this->texture = texture;
+    this->is_changed = true;
 }
 
 void Brick::draw() {
-	PhRect_t  rect;
+    if (is_changed) {
+        PhRect_t  rect;
 
-	rect.ul.x = pos.x;
-	rect.ul.y = pos.y;
-	rect.lr.x = pos.x + pos.w;
-	rect.lr.y = pos.y + pos.h;
+        rect.ul.x = pos.x;
+        rect.ul.y = pos.y;
+        rect.lr.x = pos.x + pos.w;
+        rect.lr.y = pos.y + pos.h;
 
-	PgSetUserClip(&rect);
+        PgSetUserClip(&rect);
 
-	if (texture == NULL) {
-		PgSetFillColor(this->color);
-		PgDrawIRect(pos.x, pos.y, pos.x + pos.w, pos.y + pos.h, Pg_DRAW_FILL);
-	} else {
-		PhPoint_t p = { pos.x, pos.y };
-//		PgDrawPhImagemx(&p, texture, NULL);
-		PgDrawImagemx(texture->image, texture->type, &p, &texture->size, texture->bpl, 0 );
-	}
+        if (texture == NULL) {
+            PgSetFillColor(this->color);
+            PgDrawIRect(pos.x, pos.y, pos.x + pos.w, pos.y + pos.h, Pg_DRAW_FILL);
+        } else {
+            PhPoint_t p = { pos.x, pos.y };
+    //      PgDrawPhImagemx(&p, texture, NULL);
+            PgDrawImagemx(texture->image, texture->type, &p, &texture->size, texture->bpl, 0 );
+        }
 
-	PtClipRemove();
+        PtClipRemove();
+
+        is_changed = false;     
+    }
 }
 
 object_type_t Brick::get_type() {
-	return OBJECT_BRICK;
+    return OBJECT_BRICK;
 }
 
 void Brick::set_pos(unsigned int x, unsigned int y) {
-	this->pos.x = x;
-	this->pos.y = y;
+    this->pos.x = x;
+    this->pos.y = y;
 }
 
 object_pos_t Brick::get_pos() {
-	return pos;
+    return pos;
 }
 
 
 void Brick::set_color(unsigned int color) {
-	this->color = color;
+    this->color = color;
+}
+
+void Brick::set_changed() {
+    is_changed = true;
+}
+
+bool Brick::get_changed() {
+    return is_changed;
 }

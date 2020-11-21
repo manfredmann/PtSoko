@@ -1,6 +1,6 @@
 /*
 * PtSoko - Sokoban for QNX4.25/Photon
-* Copyright (C) 2019 Roman Serov <roman@serov.co>
+* Copyright (C) 2019-2020 Roman Serov <roman@serov.co>
 *
 * This file is part of Sokoban for QNX4.25/Photon.
 * 
@@ -25,142 +25,154 @@
 #include <Ph.h>
 #include <Pt.h>
 
-#include <dirent.h>
 #include <String.h>
 #include <wcvector.h>
+#include <stdarg.h>
 
 #include <photon/Pf.h>
 #include <photon/PhRender.h>
 #include <photon/PtLabel.h>
 
+#include "exception.h"
+#include "debug.h"
+#include "textures.h"
+#include "level.h"
+#include "state.h"
 #include "object.h"
 #include "brick.h"
 #include "box.h"
 #include "box_place.h"
+#include "level_background.h"
+#include "level_preview.h"
 #include "player.h"
-#include "help"
+#include "help.h"
+#include "menu.h"
+#include "timer.h"
+#include "palette.h"
+#include "resources.h"
 
 #define PkIsReleased( f ) ((f & (Pk_KF_Key_Down|Pk_KF_Key_Repeat)) == 0)
 
-typedef	WCValOrderedVector<object_pos_t *>	objects_pos_t;
-typedef WCValSortedVector<String>			levels_t;
-typedef WCValOrderedVector<Object *>		objects_t;
-typedef WCValOrderedVector<objects_pos_t *>	story_t;
+typedef WCValOrderedVector<object_pos_t *>  objects_pos_t;
+typedef WCValOrderedVector<objects_pos_t *> story_t;
 
-#define GAME_AUTHOR			"Roman Serov"
-#define GAME_VERSION		"0.2.1"
-#define GAME_BLOCK_SIZE		20
+#define GAME_VERSION "0.3.0"
 
 typedef enum {
-	STATE_INIT,
-	STATE_SPLASH,
-	STATE_LOADING,
-	STATE_GAME,
-	STATE_WIN,
-	STATE_END,
-} game_state_t;
-
-typedef enum {
-	LVL_BTYPE_BRICK 	= '#',
-	LVL_BTYPE_BOX		= '$',
-	LVL_BTYPE_BOX_PLACE = '.',
-	LVL_BTYPE_BOXWPLACE	= '*',
-	LVL_BTYPE_PLAYER	= '@',
-	LVL_BTYPE_EMPTY		= ' ',
-} level_block_type_t;
+    MENU_ITEM_LOAD_LVL,
+} menu_action_t;
 
 typedef struct {
-	PhImage_t * box;
-	PhImage_t * box_place;
-	PhImage_t * brick;
-} textures_t;
+    menu_action_t   action;
+    void *          data;
+} menu_item_data_t;
 
-class Game_ex {
-	public:
-		Game_ex(String msg) {
-			this->msg = msg;
-		}
+//Вещества были забористые
+class GameException : public BaseException {
+    public:
+        GameException(String msg) : BaseException(msg) { } 
+        GameException(const char *fmt, ...) : BaseException(fmt, (va_start(args_, fmt), args_)) {
+            va_end(args_);
+        }
 
-		String what() {
-			return this->msg;
-		}
-
-
-	private:
-		String msg;
+    private:
+        va_list args_;
 };
 
 class Game {
-	public:
-		static 	Game& get_instance() {
-			static Game instance;
-			return instance;
-		}
+    public:
+        static  Game& get_instance() {
+            static Game instance;
+            return instance;
+        }
 
-		void 				init();
-		void				run();
+        void                init(String photon_dev, bool fullscreen, int width, int height);
+        void                run();
 
-	private:
-		Game();
-		~Game();
-		
-		Game& operator=( Game& );
+    private:
+        Game();
+        ~Game();
+        
+        Game& operator=( Game& );
 
-		unsigned int		block_h;
-		unsigned int		block_w;
 
-		unsigned int		blocks_w;
-		unsigned int 		blocks_h;
+        Debug &             debug;
+        Resources &         res;
 
-		String 				soko_home[3];
+        bool                fullscreen;
 
-		PhDim_t				win_size;
-		PtAppContext_t		app;
-		PtWidget_t *		window;
-		PtWidget_t * 		label;
-		PtWidget_t *		tim;
-		PhImage_t *			buf_draw;
-		PmMemoryContext_t *	mc;
-		objects_t			objects;
+        unsigned int        block_size;
 
-		objects_t			boxes;
-		objects_t			box_places;
+        String              path_home;
+        String              path_stat;
 
-		textures_t			textures;
-		game_state_t		state;
-		levels_t			levels;
+        Menu *              lvl_menu;
+        PhDim_t             lvl_menu_size;
+        PhPoint_t           lvl_menu_pos;
 
-		size_t				level_current;
-		story_t				story;
+        PhPoint_t           lvl_preview_pos;
+        PhDim_t             lvl_preview_size;
 
-		unsigned int		moves;
-		unsigned int		status_height;
-		char *				status_font;
+        Level_preview *     lvl_preview;
+        textures_t *        lvl_preview_textures;
+        unsigned int        lvl_preview_block_size;
 
-		void 				set_state(game_state_t state);
+        PhDim_t             win_size;
+        PtAppContext_t      app;
+        PtWidget_t *        window;
+        PtWidget_t *        label;
+        PtWidget_t *        tim;
+        PhImage_t *         buf_draw;
+        PmMemoryContext_t * mc;
 
-		String				texture_find(String path);
+        objects_t           objects;
+        objects_t           boxes;
+        objects_t           box_places;
+        objects_t           background;
 
-		void				level_load(size_t index);
-		void				level_unload();
-		void 				level_next();
-		void 				level_prev();
-		void				level_restart();
-		String				level_name();
-		void 				player_move(Player *player, direction_t dir);
-		void				draw();
-		void 				draw_string(unsigned int x, unsigned int y, char *str, char *font, unsigned int color);
+        textures_t *        textures;
+        
+        game_state_t        state;
+        game_state_t        state_pre_menu;
 
-		unsigned int		get_string_width(char *font, char *str);
-		unsigned int		get_string_height(char *font, char *str);
+        size_t              level_current;
+        story_t             story;
 
-		void				story_add(bool player_only);
-		void				story_back();
-		void				story_clear();
+        Timer *             timer;
 
-		void 				key_process(unsigned int key);
-		
-		static int			keyboard_callback(PtWidget_t *widget, void *data, PtCallbackInfo_t *info);
+        palette_t           palette;
+
+        unsigned int        status_height;
+        unsigned int        status_font_height;
+        char *              status_font;
+
+        bool                clear_screen;
+
+        void                set_state(game_state_t state);
+
+        void                level_load(size_t index);
+        void                level_unload();
+        void                level_next();
+        void                level_prev();
+        void                level_restart();
+        Level *             level_curr();
+
+        bool                player_move(Player *player, direction_t dir);
+
+        void                draw();
+
+        void                story_add(bool player_only);
+        void                story_back();
+        void                story_clear();
+
+        void                key_process(unsigned int key);
+        
+        static int          keyboard_callback(PtWidget_t *widget, void *data, PtCallbackInfo_t *info);
+        static int          input_callback(void *data, pid_t rcv_id, void *message, size_t size);
+
+        static void         level_menu_enter_callback(String name, void *data);
+        static void         level_menu_select_callback(String name, void *data);
+
 };
 
 #endif

@@ -1,6 +1,6 @@
 /*
 * PtSoko - Sokoban for QNX4.25/Photon
-* Copyright (C) 2019 Roman Serov <roman@serov.co>
+* Copyright (C) 2019-2020 Roman Serov <roman@serov.co>
 *
 * This file is part of Sokoban for QNX4.25/Photon.
 * 
@@ -21,13 +21,23 @@
 #ifndef HELP_H
 #define HELP_H
 
+#include <Ap.h>
+#include <Ph.h>
+#include <Pt.h>
+
 #include <stdio.h>
 #include <stdarg.h>
 #include <String.h>
+#include <bool.h>
 
 class Help {
-	public:
-		static String Sprintf(char *fmt, ...);
+    public:
+        static String             Sprintf(const char *fmt, ...);
+        static bool               is_dir_exists(String path);
+        static bool               is_file_exists(String path);
+        static unsigned int       get_string_width(const char *font, char *str);
+        static unsigned int       get_string_height(const char *font, char *str);
+        static void               draw_string(unsigned int x, unsigned int y, char *str, char *font, unsigned int color, unsigned int background_color = 0x0, bool back = false);
 };
 
 #endif

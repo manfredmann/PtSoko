@@ -5,16 +5,20 @@ local:
     - inc
     - obj
     - bin
+    - res
+    - lib
   project_files:
-    - Makefile
+    - Makefile.game
+    - Makefile.packer
+    - buildq4o.sh
 remote:
   host: "qnx4vm"
   projects_path: "/root/projects"
 build:
-  cmd_pre: ""
-  cmd_build: "make"
-  cmd_post: ""
-  cmd_clean: "make clean"
+  cmd_pre: "sh buildq4o.sh"
+  cmd_build: "make -f Makefile.game; make -f Makefile.packer"
+  cmd_post: "bin/PtSokoPacker -p res/.ptsoko res/res.pack; bin/PtSokoPacker -b res/res.pack bin/PtSoko"
+  cmd_clean: "make -f Makefile.game clean; make -f Makefile.packer clean"
 run:
   bin_path: "bin"
   bin_name: "PtSoko"

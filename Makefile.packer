@@ -1,0 +1,34 @@
+TARGET = PtSokoPacker
+SRCDIR = ./src/
+SRCS =	debug.cpp \
+				help.cpp \
+				respack.cpp \
+				main_packer.cpp
+
+BINDIR = ./bin/
+OBJDIR = ./obj/
+OBJS = $(SRCS:.cpp=.o)
+CC = cc
+INCLUDEDIRS += ./inc
+INCLUDEDIRS += ./lib/qnx4opts/inc
+
+LIBS = photon
+LIBS += lib/qnx4opts/bin/qnx4opts.a
+
+CFLAGS = -Oentx -ms -s -w1 -5r, -WC,-xss \
+							$(addprefix -I, $(INCLUDEDIRS))
+LDFLAGS = -M -N 64k \
+							$(addprefix -l, $(LIBS))
+
+.PHONY:				all clean
+
+all:					$(BINDIR)$(TARGET)
+
+clean:
+							-rm -f $(OBJDIR)*.o $(BINDIR)$(TARGET) $(BINDIR)*.map *.err 
+
+$(OBJDIR)%.o : $(SRCDIR)%.cpp
+							$(CC) $(CFLAGS) -c -o $@ $<
+
+$(BINDIR)$(TARGET): 	$(addprefix $(OBJDIR), 	$(OBJS))
+							$(CC) $(LDFLAGS) -o $@ $^

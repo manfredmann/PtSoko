@@ -1,6 +1,6 @@
 /*
 * PtSoko - Sokoban for QNX4.25/Photon
-* Copyright (C) 2019 Roman Serov <roman@serov.co>
+* Copyright (C) 2019-2020 Roman Serov <roman@serov.co>
 *
 * This file is part of Sokoban for QNX4.25/Photon.
 * 
@@ -18,923 +18,1168 @@
 * along with Sokoban for QNX4.25/Photon. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "game.h"
 #include <String.h>
 #include <stdio.h>
 #include <time.h>
 
-static char *img_mem;
+#include "game.h"
 
-static void *img_memory_allocate(long nbytes, int type) {
-	if( type == PX_IMAGE ) {
-		return PgShmemCreate( nbytes, NULL);
-	} else {
-		return calloc(1, nbytes);
-	}
-}
+Game::Game() : debug(Debug::get_instance()), res(Resources::get_instance()) {
+    debug.printf(DBG_LVL_3, "call Game::Game\n");
 
-static void *img_memory_free(void *memory, int type) {
-	if (type == PX_IMAGE) {
-		PgShmemDestroy(memory);
-	} else {
-		free(memory);
-	}
+    buf_draw                = NULL;
+    lvl_menu                = NULL;
+    status_font             = NULL;
+    mc                      = NULL;
+    timer                   = NULL;
+    clear_screen            = true;
+    block_size              = 0;
+    lvl_preview_block_size  = 0;
 
-	return NULL;
-}
-
-static void *img_warning(char *msg) {
-	printf("%s\n", msg);
-	return NULL;
-}
-
-static void *img_error(char *msg) {
-	printf("%s\n", msg);
-	exit(EXIT_FAILURE);
-	return NULL;
-}
-
-static void *img_progress(int percent) {
-	//printf("Texture load status:  %d.%d percent\n", percent >> 16, percent & 0xffff);
-	return NULL;
-}
-
-Game::Game() {
-	PhChannelParms_t 	parms		= {0, 0, Ph_DYNAMIC_BUFFER};
-	char *				displayname	= NULL;
-
-	if (!PhAttach(displayname, &parms)) {
-		String err;
-
-		if (displayname) {
-			err = Help::Sprintf("Could not attach to Photon manager [%s]", displayname);
-		} else if ((displayname = getenv("PHOTON"))) {
-			err = Help::Sprintf("Could not attach to Photon manager (PHOTON=[%s]", displayname);
-		} else {
-			err = String("Could not attach to Photon manager [/dev/photon]");
-		}
-
-		throw Game_ex(err);
-	}
-
-	PtInit(NULL);
-
-	PgSetDrawBufferSize(0xFFFF);
-
-	block_h = GAME_BLOCK_SIZE;
-	block_w = GAME_BLOCK_SIZE;
-
-	blocks_w = 31;
-	blocks_h = 24;
-
-	win_size.w = blocks_w * block_w;
-	win_size.h = (blocks_h * block_h) + 24;
-
-	PtArg_t		args_win[10];
-	PtArg_t		args_lbl[6];
-
-	PhArea_t	area	= {0, 0, win_size.w, win_size.h};
-
-	PtSetArg(&args_win[0], Pt_ARG_MIN_WIDTH, area.size.w, 0);
-	PtSetArg(&args_win[1], Pt_ARG_MIN_HEIGHT, area.size.h, 0);
-	PtSetArg(&args_win[3], Pt_ARG_MAX_HEIGHT, area.size.w, 0);
-	PtSetArg(&args_win[4], Pt_ARG_MAX_WIDTH,  area.size.h, 0);
-	PtSetArg(&args_win[5], Pt_ARG_WINDOW_TITLE, "Sokoban", 0);
-	PtSetArg(&args_win[6], Pt_ARG_WINDOW_RENDER_FLAGS,
-		Ph_WM_RENDER_ASAPP |
-		Ph_WM_RENDER_CLOSE |
-		Ph_WM_RENDER_TITLE |
-		Ph_WM_RENDER_MIN,
-		Pt_TRUE);
-
-	PtSetArg(&args_win[7], Pt_ARG_WINDOW_CURSOR_OVERRIDE, Pt_TRUE, 0);
-	PtSetArg(&args_win[8], Pt_ARG_WINDOW_STATE, Ph_WM_STATE_ISFRONT, 0);
-	PtSetArg(&args_win[9], Pt_ARG_CURSOR_TYPE, Ph_CURSOR_NONE, 0);
-
-	PtSetParentWidget(NULL);
-	window = PtCreateWidget(PtWindow, NULL, 10, args_win);
-
-	PtAddEventHandler(window, Ph_EV_KEY, &keyboard_callback, NULL);
-
-	buf_draw		= new PhImage_t;
-	buf_draw->type	= Pg_IMAGE_DIRECT_888;
-	buf_draw->size	= area.size;
-	buf_draw->image = new char[area.size.w * area.size.h * 3];
-
-	PtSetArg(&args_lbl[0], Pt_ARG_LABEL_TYPE, Pt_IMAGE, 0 );
-	PtSetArg(&args_lbl[1], Pt_ARG_AREA, &area, 0 );
-	PtSetArg(&args_lbl[2], Pt_ARG_LABEL_DATA, buf_draw, sizeof(*buf_draw));
-	PtSetArg(&args_lbl[3], Pt_ARG_MARGIN_HEIGHT, 0, 0);
-	PtSetArg(&args_lbl[4], Pt_ARG_MARGIN_WIDTH, 0, 0);
-	PtSetArg(&args_lbl[5], Pt_ARG_BORDER_WIDTH, 0, 0);
-
-	label = PtCreateWidget(PtLabel, window, 6, args_lbl);
-
-	PhPoint_t translation = { 0, 0 };
-	mc = PmMemCreateMC(buf_draw, &win_size, &translation);
-
-	PxMethods_t methods_brick;
-	PxMethods_t methods_box;
-	PxMethods_t methods_box_place;
-	
-	memset(&methods_brick, 0, sizeof(PxMethods_t));
-	memset(&methods_box, 0, sizeof(PxMethods_t));
-	memset(&methods_box_place, 0, sizeof(PxMethods_t));
-
-	methods_brick.px_alloc			= img_memory_allocate;
-	methods_brick.px_free			= img_memory_free;
-	methods_brick.px_warning		= img_warning;
-	methods_brick.px_error			= img_error;
-	methods_brick.px_progress		= img_progress;
-	methods_brick.flags				= PX_LOAD;
-
-	methods_box.px_alloc			= img_memory_allocate;
-	methods_box.px_free				= img_memory_free;
-	methods_box.px_warning			= img_warning;
-	methods_box.px_error			= img_error;
-	methods_box.px_progress			= img_progress;
-	methods_box.flags				= PX_LOAD;
-
-	methods_box_place.px_alloc		= img_memory_allocate;
-	methods_box_place.px_free		= img_memory_free;
-	methods_box_place.px_warning	= img_warning;
-	methods_box_place.px_error		= img_error;
-	methods_box_place.px_progress	= img_progress;
-	methods_box_place.flags			= PX_LOAD;
-
-	soko_home[0] = String(String(getenv("HOME")) + "/.ptsoko/");
-	soko_home[1] = String("/usr/ptsoko/");
-	soko_home[2] = String("./");
-
-	String textures_path[3];
-
-	textures_path[0] = texture_find("box.bmp");
-	textures_path[1] = texture_find("box_place.bmp");
-	textures_path[2] = texture_find("brick.bmp");
-
-	if (textures_path[0].length() == 0 || textures_path[1].length() == 0 || textures_path[2].length() == 0) {
-		throw Game_ex("Textures not found");
-	}
-
-	textures.box		= PxLoadImage(strdup((const char *)textures_path[0]), &methods_box);
-	textures.box_place	= PxLoadImage(strdup((const char *)textures_path[1]), &methods_box_place);
-	textures.brick		= PxLoadImage(strdup((const char *)textures_path[2]), &methods_brick);
-
-	if (textures.box->size.w != GAME_BLOCK_SIZE) {
-		throw Game_ex(Help::Sprintf("Texture width must be: %d", GAME_BLOCK_SIZE));
-	}
-
-	if (textures.box_place->size.w != GAME_BLOCK_SIZE) {
-		throw Game_ex(Help::Sprintf("Texture width must be: %d", GAME_BLOCK_SIZE));
-	}
-
-	if (textures.brick->size.w != GAME_BLOCK_SIZE) {
-		throw Game_ex(Help::Sprintf("Texture width must be: %d", GAME_BLOCK_SIZE));
-	}
-
-	if (textures.box->size.h != GAME_BLOCK_SIZE) {
-		throw Game_ex(Help::Sprintf("Texture height must be: %d", GAME_BLOCK_SIZE));
-	}
-
-	if (textures.box_place->size.h != GAME_BLOCK_SIZE) {
-		throw Game_ex(Help::Sprintf("Texture height must be %d", GAME_BLOCK_SIZE));
-	}
-
-	if (textures.brick->size.h != GAME_BLOCK_SIZE) {
-		throw Game_ex(Help::Sprintf("Texture height must be %d", GAME_BLOCK_SIZE));
-	}
-
-	state				= STATE_INIT;
-	level_current		= 0;
-
-	status_font			= new char[strlen("pcterm14")];
-	strcpy(status_font, "pcterm14");
-	status_height		= get_string_height(status_font, "Status");
-
-	PtRealizeWidget(window);
-	app = PtDefaultAppContext();
-
+    path_home               = res.get_path_home();
+    path_stat               = res.get_path_stat();
 }
 
 Game::~Game() {
+    debug.printf(DBG_LVL_3, "call Game::~Game\n");
+
+    if (mc != NULL) {
+        PmMemReleaseMC(mc);
+    }
+
+    if (lvl_menu != NULL) {
+        delete lvl_menu;
+    }
+
+    if (lvl_preview != NULL) {
+        delete lvl_preview;
+    }
+
+    if (buf_draw != NULL) {
+        delete buf_draw;
+    }
+
+    if (status_font != NULL) {
+        delete status_font;
+    }
 }
 
-String Game::texture_find(String path) {
-	String texture_path;
+void Game::init(String photon_dev, bool fullscreen, int width, int height) {
+    debug.printf(DBG_LVL_3, "call Game::init\n");
 
-	for (size_t i = 0; i < 3; ++i) {
-		texture_path = String(soko_home[i] + "textures/" + path);
-		FILE *f = fopen((const char *) texture_path, "r");
+    PhChannelParms_t    parms       = {0, 0, Ph_DYNAMIC_BUFFER};
+    const char *        displayname = NULL;
 
-		if (f == NULL) {
-			printf("error: Couldn't open file \"%s\"\n", (const char *)texture_path);
-			texture_path = String("");
-			continue;
-		} else {
-			printf("Texture: %s OK\n",  (const char *)texture_path);
-			fclose(f);
-			break;
-		}
-	}
+    if (photon_dev.length() != 0) {
+        displayname = photon_dev;
+    }
 
-	return texture_path;
-}
+    if (!PhAttach(displayname, &parms)) {
+        String err;
 
-void Game::init() {
-	DIR *dir = NULL;
-	struct dirent *entry;
-	String levels_path[3];
-	String levels_dir;
+        if (displayname) {
+            err = Help::Sprintf("Could not attach to Photon manager [%s]", displayname);
+        } else if ((displayname = getenv("PHOTON"))) {
+            err = Help::Sprintf("Could not attach to Photon manager (PHOTON=[%s]", displayname);
+        } else {
+            err = String("Could not attach to Photon manager [/dev/photon]");
+        }
 
-	levels_path[0] = String(soko_home[0] + "levels/");
-	levels_path[1] = String(soko_home[1] + "levels/");
-	levels_path[2] = String(soko_home[2] + "levels/");
+        throw GameException(err);
+    }
 
-	for (size_t i = 0; i < 3; ++i) {
-		printf("Searching levels at \"%s\"\n", (const char *)levels_path[i]);
-		dir = opendir((const char *)levels_path[i]);
+    PtInit(NULL);
 
-		if (!dir) {
-			printf("Couldn't open levels directory\n");
-		} else {
-			levels_dir = levels_path[i];
-			printf("OK\n");
-			break;
-		}
-	}
+    PgSetDrawBufferSize(0xFFFF);
 
-	if (!dir) {
-		throw Game_ex("Levels not found\n");
-	}
+// ============================
 
-	while ((entry = readdir(dir)) != NULL) {
-		String fname = String(entry->d_name);
+    short           screen_width;
+    short           screen_height;
+    unsigned char   screen_n;
+    PhRect_t        extent;
 
-		int i = fname.index(".lvl", fname.length() - 4);
+// ============================
 
-		if (i == -1) {
-			continue;
-		}
+    this->fullscreen    = fullscreen;
 
-		printf("Loading %s: ", (const char *) fname);
-		fname = levels_dir + fname;
+    if (fullscreen) {
+        if (PhWindowQueryVisible(Ph_QUERY_GRAPHICS, 0, 1, &extent) == 0) {
+           screen_width     = extent.lr.x - extent.ul.x + 1;
+           screen_height    = extent.lr.y - extent.ul.y + 1;
+           screen_n         = ((extent.lr.x + 1) / screen_width) + (((extent.lr.y) / screen_height) * 3);
 
-		FILE *level_file = fopen((const char *) fname, "r");
 
-		if (level_file == NULL) {
-			printf("error: Couldn't open file \"%s\"\n", (const char *)fname);
-			continue;
-		}
+           debug.printf(DBG_LVL_1, "Screen width: %d, height: %d, Console number: %d\n", screen_width, screen_height, screen_n);
+        } else {
+            throw GameException("Couldn't get screen resolution");
+        }
 
-		char line[1024];
+        win_size.w = screen_width;
+        win_size.h = screen_height;
+    } else {
+        win_size.w = width;
+        win_size.h = height;
+    }
 
-		String			level;
-		unsigned int 	boxes		= 0;
-		unsigned int 	box_places	= 0;
-		unsigned int	player		= 0;
-		unsigned int 	width		= 0;
-		unsigned int 	height 		= 0;
+// ============================
 
-		while (fgets(line, sizeof(line), level_file) != NULL) {
-			line[strlen(line) - 1] = '\0';
+    PtArg_t         args_win[10];
+    PtArg_t         args_lbl[6];
 
-			for (int i = 0; i < strlen(line); ++i) {
-				char type = line[i];
+    unsigned int    arg_i   = 0;
+    PhArea_t        area    = {0, 0, win_size.w, win_size.h};
 
-				switch (type) {
-					case LVL_BTYPE_BRICK: {
-						level += type;
-						break;						
-					}
-					case LVL_BTYPE_BOX: {
-						++boxes;
-						level += type;
+    PtSetArg(&args_win[arg_i++], Pt_ARG_MIN_WIDTH,      area.size.w, 0);
+    PtSetArg(&args_win[arg_i++], Pt_ARG_MIN_HEIGHT,     area.size.h, 0);
+    PtSetArg(&args_win[arg_i++], Pt_ARG_MAX_HEIGHT,     area.size.w, 0);
+    PtSetArg(&args_win[arg_i++], Pt_ARG_MAX_WIDTH,      area.size.h, 0);
+    PtSetArg(&args_win[arg_i++], Pt_ARG_WINDOW_TITLE,   "Sokoban", 0);
 
-						break;
-					}
-					case LVL_BTYPE_BOX_PLACE: {
-						++box_places;
-						level += type;
+    if (!fullscreen) {
+        PtSetArg(&args_win[arg_i++], Pt_ARG_WINDOW_RENDER_FLAGS,
+            Ph_WM_RENDER_ASAPP |
+            Ph_WM_RENDER_CLOSE |
+            Ph_WM_RENDER_TITLE |
+            Ph_WM_RENDER_MIN,
+            Pt_TRUE);
 
-						break;
-					}
-					case LVL_BTYPE_BOXWPLACE: {
-						++boxes;
-						++box_places;
+    } else {        
+        PtSetArg(&args_win[arg_i++], Pt_ARG_WINDOW_RENDER_FLAGS,
+            Ph_WM_RENDER_ASAPP,
+            Pt_TRUE);
+    }
 
-						level += type;
-						break;
-					}
-					case LVL_BTYPE_PLAYER: {
-						++player;
+    PtSetArg(&args_win[arg_i++], Pt_ARG_WINDOW_CURSOR_OVERRIDE, Pt_TRUE, 0);
+    PtSetArg(&args_win[arg_i++], Pt_ARG_WINDOW_STATE,           Ph_WM_STATE_ISFRONT, 0);
+    PtSetArg(&args_win[arg_i++], Pt_ARG_CURSOR_TYPE,            Ph_CURSOR_NONE, 0);
 
-						level += type;
-						break;
-					}
-					case LVL_BTYPE_EMPTY: {
-						level += ' ';
-						break;
-					}
-				}
-				++width;
+    PtSetParentWidget(NULL);
+    window = PtCreateWidget(PtWindow, NULL, arg_i, args_win);
 
-				if (width > blocks_w) {
-					throw Game_ex(Help::Sprintf("Broken level file. Level width to high. Must be <= %d", blocks_w));
-				}
-			}
+    PtAddEventHandler(window, Ph_EV_KEY, &keyboard_callback, NULL);
 
-			width = 0;
-			++height;
+// ============================
 
-			if (height > blocks_h) {
-				throw Game_ex(Help::Sprintf("Broken level file. Level height to high. Must be <= %d", blocks_h));
-			}
+    buf_draw        = new PhImage_t;
+    buf_draw->type  = Pg_IMAGE_DIRECT_888;
+    buf_draw->size  = area.size;
+    buf_draw->image = new char[area.size.w * area.size.h * 3];
+    arg_i           = 0;
 
-			level += '\n';
-		}
+    PtSetArg(&args_lbl[arg_i++], Pt_ARG_LABEL_TYPE,     Pt_IMAGE, 0 );
+    PtSetArg(&args_lbl[arg_i++], Pt_ARG_AREA,           &area, 0 );
+    PtSetArg(&args_lbl[arg_i++], Pt_ARG_LABEL_DATA,     buf_draw, sizeof(*buf_draw));
+    PtSetArg(&args_lbl[arg_i++], Pt_ARG_MARGIN_HEIGHT,  0, 0);
+    PtSetArg(&args_lbl[arg_i++], Pt_ARG_MARGIN_WIDTH,   0, 0);
+    PtSetArg(&args_lbl[arg_i++], Pt_ARG_BORDER_WIDTH,   0, 0);
 
-		fclose(level_file);
+    label = PtCreateWidget(PtLabel, window, arg_i, args_lbl);
 
-		if (player == 0) {
-			throw Game_ex("Broken level file. Player = 0");
-		}
+// ============================
 
-		if (boxes == 0) {
-			throw Game_ex("Broken level file. Box = 0");
-		}
+    PhPoint_t translation = { 0, 0 };
+    mc = PmMemCreateMC(buf_draw, &win_size, &translation);
 
-		if (box_places == 0) {
-			throw Game_ex("Broken level file. Box_place = 0");
-		}
+// ============================
 
-		if (boxes != box_places) {
-			throw Game_ex("Broken level file. Box != Box_place");
-		}
+    state               = STATE_INIT;
+    level_current       = 0;
 
-		if (player > 1) {
-			throw Game_ex("Broken level file. Player > 1");
-		}
+// ============================
 
-		level = fname + ";" + level;
+    status_font         = "pcterm14";
+    status_font_height  = Help::get_string_height(status_font, "Status");
+    status_height       = status_font_height + 10;
 
-		levels.insert(level);
+// ============================
 
-		printf("OK\n");
-	}
+    res.load_levels();
 
-	if (levels.entries() == 0) {
-		throw Game_ex("Levels not found");
-	}
+// ============================
 
-	state = STATE_SPLASH;
-	draw();
+    lvl_menu_size.w = (win_size.w / 100) * 15;
+    lvl_menu_size.h = win_size.h;
+
+    lvl_menu_pos.x = 10;
+    lvl_menu_pos.y = 0;
+
+    lvl_menu = new Menu(lvl_menu_size, lvl_menu_pos, palette);
+    lvl_menu->add_enter_callback(Game::level_menu_enter_callback);
+    lvl_menu->add_select_callback(Game::level_menu_select_callback);
+
+    for (size_t i = 0; i < res.get_levels()->entries(); ++i) {
+        Level *lvl = res.get_level(i);
+
+        menu_item_data_t *MenuItem = new menu_item_data_t;
+
+        MenuItem->action            = MENU_ITEM_LOAD_LVL;
+        MenuItem->data              = new size_t;
+        * (size_t *) MenuItem->data = i;
+        
+        lvl_menu->add_item(lvl->get_name(), MenuItem);
+    }
+
+// ============================
+
+    lvl_preview_pos.x = 10 + lvl_menu_size.w;
+    lvl_preview_pos.y = 0;
+
+    lvl_preview_size.w = win_size.w - lvl_preview_pos.x;
+    lvl_preview_size.h = win_size.h;
+
+// ============================
+
+    res.load_palette();
+    res.load_textures(win_size, lvl_preview_size);
+
+    palette = res.get_palette();
+
+    block_size              = res.get_block_size();
+    textures                = res.get_textures();
+    lvl_preview_block_size  = res.get_preview_block_size();
+    lvl_preview_textures    = res.get_preview_textures();
+
+//  ============================
+
+    lvl_preview = new Level_preview(lvl_preview_pos, lvl_preview_size, lvl_preview_block_size, *lvl_preview_textures, palette);
+
+// ============================
+
+    PtRealizeWidget(window);
+    PtWindowToFront(window);
+    PtWindowFocus(window);
+
+    app = PtDefaultAppContext();
+
+    PtAppAddInput(app, 0, Game::input_callback, NULL);
+
+// ============================
+
+    lvl_menu->select(0);
+
+    set_state(STATE_SPLASH);
 }
 
 void Game::run() {
-	PtMainLoop();
+    debug.printf(DBG_LVL_3, "call Game::run\n");
+
+    PtMainLoop();
 }
 
 bool check(object_pos_t r1, object_pos_t r2) {
-	int x0 = r1.x;
-	int y0 = r1.y;
+    int x0 = r1.x;
+    int y0 = r1.y;
 
-	int x1 = r1.x + r1.w;
-	int y1 = r1.y + r1.h;
+    int x1 = r1.x + r1.w;
+    int y1 = r1.y + r1.h;
 
-	int x2 = r2.x;
-	int y2 = r2.y;
+    int x2 = r2.x;
+    int y2 = r2.y;
 
-	int x3 = r2.x + r2.w;
-	int y3 = r2.y + r2.h;
+    int x3 = r2.x + r2.w;
+    int y3 = r2.y + r2.h;
 
-	if (x0 > x3 || x1 < x2 || y0 > y3 || y1 < y2 ) {
-		return false;
-	} 
-	return true;
+    if (x0 > x3 || x1 < x2 || y0 > y3 || y1 < y2 ) {
+        return false;
+    } 
+    return true;
 }
 
 void Game::story_add(bool player_only) {
-	objects_pos_t *positions = new objects_pos_t;
+    debug.printf(DBG_LVL_3, "call Game::story_add\n");
 
-	if (!player_only) {
-		for (size_t i = 0; i < boxes.entries(); ++i) {
-			Object *obj			= boxes[i];
-			object_pos_t *pos 	= new object_pos_t;
+    objects_pos_t *positions = new objects_pos_t;
 
-			*pos 				= obj->get_pos();
+    if (!player_only) {
+        for (size_t i = 0; i < boxes.entries(); ++i) {
+            Object *obj         = boxes[i];
+            object_pos_t *pos   = new object_pos_t;
 
-			positions->insert(pos);
-		}		
-	}
+            *pos                = obj->get_pos();
 
-	Object *obj = objects[objects.entries() - 1];
+            positions->insert(pos);
+        }       
+    }
 
-	object_pos_t *pos 	= new object_pos_t;
-	*pos 				= obj->get_pos();
-	
-	positions->insert(pos);
+    Object *obj = objects[objects.entries() - 1];
 
-	story.insert(positions);
+    object_pos_t *pos   = new object_pos_t;
+    *pos                = obj->get_pos();
+    
+    positions->insert(pos);
+
+    story.insert(positions);
 }
 
 void Game::story_back() {
-	if (story.entries() == 0) {
-		return;
-	}
+    debug.printf(DBG_LVL_3, "call Game::story_back\n");
 
-	objects_pos_t *last_move = story[story.entries() - 1];
+    if (story.entries() == 0) {
+        return;
+    }
 
-	//Restore Box positions
-	if (last_move->entries() > 1) {
-		for (size_t i = 0; i < last_move->entries() - 1; ++i) {
-			object_pos_t *pos = (*last_move)[i];
-			Object *obj = boxes[i];
+    size_t          i;
+    objects_pos_t * last_move = story[story.entries() - 1];
 
-			obj->set_pos(pos->x, pos->y);
-		}
-	}
+    for (i = 0; i < background.entries(); ++i) {
+        Object *obj = background[i];
+        obj->set_changed();
+    }
 
-	//Restore Player position
-	object_pos_t *pos = (*last_move)[last_move->entries() - 1];
-	Object *obj = objects[objects.entries() - 1];
+    for (i = 0; i < box_places.entries(); ++i) {
+        Object *obj = box_places[i];
+        obj->set_changed();
+    }
 
-	obj->set_pos(pos->x, pos->y);
+    for (i = 0; i < boxes.entries(); ++i) {
+        Object *obj = boxes[i];
+        obj->set_changed();
+    }
 
-	delete last_move;
-	story.removeLast();
-	moves--;
+    //Restore Box positions
+    if (last_move->entries() > 1) {
+        for (size_t i = 0; i < last_move->entries() - 1; ++i) {
+            object_pos_t *pos = (*last_move)[i];
+            Object *obj = boxes[i];
+
+            obj->set_pos(pos->x, pos->y);
+            obj->set_changed();
+        }
+    }
+
+    //Restore Player position
+    object_pos_t *pos = (*last_move)[last_move->entries() - 1];
+    Object *obj = objects[objects.entries() - 1];
+
+    obj->set_pos(pos->x, pos->y);
+    obj->set_changed();
+
+    delete last_move;
+    story.removeLast();
+
+    level_curr()->get_stat().moves--;
 }
 
 void Game::story_clear() {
-	while(story.entries() != 0) {
-		objects_pos_t *moves = story.last();
+    debug.printf(DBG_LVL_3, "call Game::story_clear\n");
 
-		while (moves->entries() != 0) {
-			delete moves->last();
-			moves->removeLast();
-		}
-		
-		delete story.last();
-		story.removeLast();
-	}
+    while(story.entries() != 0) {
+        objects_pos_t *moves = story.last();
+
+        while (moves->entries() != 0) {
+            delete moves->last();
+            moves->removeLast();
+        }
+        
+        delete story.last();
+        story.removeLast();
+    }
 }
 
-void Game::player_move(Player *player, direction_t dir) {
-	object_pos_t	player_pos_next	= player->move_next(dir);
-	object_pos_t	player_pos		= player->get_pos();
-	Box *			box				= NULL;
+bool Game::player_move(Player *player, direction_t dir) {
+    debug.printf(DBG_LVL_3, "call Game::player_move\n");
 
-	bool is_move_correct = true;
+    object_pos_t    player_pos_next = player->move_next(dir);
+    object_pos_t    player_pos      = player->get_pos();
+    Box *           box             = NULL;
+    size_t          i;
+    bool            is_move_correct = true;
 
-	for (size_t i = 0; i < objects.entries(); ++i) {
-		Object *		object	= objects[i];
-		object_pos_t	obj_pos = object->get_pos();
+    for (i = 0; i < objects.entries(); ++i) {
+        Object *        object  = objects[i];
+        object_pos_t    obj_pos = object->get_pos();
 
-		switch(object->get_type()) {
-			case OBJECT_BRICK: {
-				if (check(player_pos_next, obj_pos)) {
-					is_move_correct = false;
-				}
-				break;
-			}
-			case OBJECT_BOX: {
-				if (check(player_pos_next, obj_pos)) {
-					box = (Box *)object;
-				}
-				break;
-			}
-			default: continue;
-		}
-	}
+        switch(object->get_type()) {
+            case OBJECT_BRICK: {
+                if (check(player_pos_next, obj_pos)) {
+                    is_move_correct = false;
+                }
+                break;
+            }
+            case OBJECT_BOX: {
+                if (check(player_pos_next, obj_pos)) {
+                    box = (Box *)object;
+                }
+                break;
+            }
+            default: continue;
+        }
+    }
 
-	if (is_move_correct) {
-		if (box != NULL) {
-			object_pos_t box_pos_next = box->move_calc(dir);
+    if (is_move_correct) {
+        // for (i = 0; i < boxes.entries(); ++i) {
+        //     Box *box = (Box *) boxes[i];
 
-			for (size_t i = 0; i < objects.entries(); ++i) {
+        //     for (size_t j = 0; j < box_places.entries(); ++j) {
+        //         Box_place *box_place = (Box_place *) box_places[j];
 
-				Object *		object	= objects[i];
-				object_pos_t	obj_pos = object->get_pos();
+        //         if (check(box->get_pos(), box_place->get_pos())) {
+        //             box->set_changed();
+        //         }
+        //     }
+        // }
 
-				switch(object->get_type()) {
-					case OBJECT_BOX: {
-						if (((Box *) object) == box) {
-							continue;
-						}
-					}
-					case OBJECT_BRICK:{
-						if (check(box_pos_next, obj_pos)) {
-							return;
-						}
-						break;
-					}
-				}
-			}
-			story_add(false);
-			box->move(dir);
-		} else {
-			story_add(true);
-		}
+        if (box != NULL) {
+            object_pos_t box_pos_next = box->move_calc(dir);
 
-		player->move(dir);
-		this->moves++;
+            for (size_t i = 0; i < objects.entries(); ++i) {
 
-		for (size_t i = 0; i < boxes.entries(); ++i) {
-			Box *box = (Box *) boxes[i];
+                Object *        object  = objects[i];
+                object_pos_t    obj_pos = object->get_pos();
 
-			bool find = false;
-			for (size_t j = 0; j < box_places.entries(); ++j) {
-				Box_place *box_place = (Box_place *) box_places[j];
+                switch(object->get_type()) {
+                    case OBJECT_BOX: {
+                        if (((Box *) object) == box) {
+                            continue;
+                        }
+                    }
+                    case OBJECT_BRICK:{
+                        if (check(box_pos_next, obj_pos)) {
+                            return false;
+                        }
+                        break;
+                    }
+                }
+            }
 
-				if (check(box->get_pos(), box_place->get_pos())) {
-					find = true;
-					break;
-				}
-			}
+            story_add(false);
+            box->move(dir);
+        } else {
+            story_add(true);
+        }
 
-			if (find == false) {
-				return;
-			}
-		}
+        for (size_t i = 0; i < objects.entries(); ++i) {
+            Object *obj = (Object *) objects[i];
 
-		level_next();
-	}
+            if (obj->get_type() == OBJECT_BACKGROUND || obj->get_type() == OBJECT_BOXPLACE) {
+                if (obj->get_pos().x == player_pos.x &&
+                    obj->get_pos().y == player_pos.y) {
+
+                    obj->set_changed();
+                    break;
+                }                
+            }   
+        }
+
+        player->move(dir);
+
+        level_curr()->get_stat().moves++;
+
+        for (i = 0; i < boxes.entries(); ++i) {
+            Box *box = (Box *) boxes[i];
+
+            bool find = false;
+            for (size_t j = 0; j < box_places.entries(); ++j) {
+                Box_place *box_place = (Box_place *) box_places[j];
+
+                if (check(box->get_pos(), box_place->get_pos())) {
+                    box->set_changed();
+
+                    find = true;
+                    break;
+                }
+            }
+
+            if (find == false) {
+                return is_move_correct;
+            }
+        }
+
+        // =============== WIN!!! =================
+
+        Level *lvl = level_curr();
+
+        level_stat_t &          level_stat         = lvl->get_stat();
+        const level_stat_t &    level_stat_best    = lvl->get_stat_best();
+
+        if (lvl->is_first_run() || level_stat <= level_stat_best) {
+            lvl->set_stat_best();
+    
+            try {
+                String stat_fname = Help::Sprintf("%s/%s.dat", (const char *) path_stat, (const char *) lvl->get_name());
+
+                lvl->save_stat(stat_fname);
+            } catch (StatisticException &e) {
+                debug.printf(DBG_LVL_1, "Couldn't save statistic: %s\n", e.what_c());
+            }
+        }
+
+        level_next();
+    }
+
+    return is_move_correct;
 }
-
 
 void Game::key_process(unsigned int key) {
-	switch(state) {
-		case STATE_SPLASH: {
-			if (key == Pk_s && state == STATE_SPLASH) {
-				level_load(level_current);
-			}
-			break;
-		}
-		case STATE_GAME: {
-			Player *player = NULL;
+    debug.printf(DBG_LVL_3, "call Game::key_process\n");
 
-			for (size_t i = 0; i < objects.entries(); ++i) {
-				if (objects[i]->get_type() == OBJECT_PLAYER) {
-					player = (Player *) objects[i];
-					break;
-				}
-			}
+    bool need_draw = false;
 
-			if (player == NULL) {
-				return;
-			}
-			
-			switch(key) {
-				case Pk_Up: {
-					player_move(player, DIRECTION_UP);
-					break;
-				}
-				case Pk_Down: {
-					player_move(player, DIRECTION_DOWN);
-					break;
-				}
-				case Pk_Left: {
-					player_move(player, DIRECTION_LEFT);
-					break;
-				}
-				case Pk_Right: {
-					player_move(player, DIRECTION_RIGHT);
-					break;
-				}
-				case Pk_BackSpace: {
-					story_back();
-					break;
-				}
-				case Pk_r: {
-					level_restart();
-					break;
-				}
-				case Pk_n: {
-					level_next();
-					break;
-				}
-				case Pk_p: {
-					level_prev();
-					break;
-				}
-			}
-			break;
-		}
-	}
-	draw();
-}
+    switch(state) {
+        case STATE_INIT:
+        case STATE_LOADING: 
+        case STATE_WIN: {
+            break;
+        }
+        case STATE_MENU: {
+            switch(key) {
+                case Pk_Escape:
+                case Pk_m: {
+                    set_state(state_pre_menu);
 
-void Game::draw_string(unsigned int x, unsigned int y, char *str, char *font, unsigned int color) {
-	PhPoint_t p;
-	p.x = x;
-	p.y = y;
+                    break;
+                }
 
-	PgSetFont(font);
-	PgSetTextColor(color);
-	PgDrawText(str, strlen(str), &p, 0);
-}
+                case Pk_Up: {
+                    lvl_menu->up();
 
-unsigned int Game::get_string_width(char *font, char *str) {
-	PhRect_t rect;
+                    need_draw = true;
+                    break;
+                }
 
-	PfExtentText(&rect, NULL, font, str, strlen(str));
+                case Pk_Down: {
+                    lvl_menu->down();
+                    
+                    need_draw = true;
+                    break;
+                }
 
-	return rect.lr.x - rect.ul.x + 1;
-}
+                case Pk_Left: {
+                    lvl_menu->left();
 
-unsigned int Game::get_string_height(char *font, char *str) {
-	PhRect_t rect;
+                    need_draw = true;
+                    break;
+                }
+                case Pk_Right: {
+                    lvl_menu->right();
 
-	PfExtentText(&rect, NULL, font, str, strlen(str));
+                    need_draw = true;
+                    break;
+                }
+                case Pk_Return: {
+                    lvl_menu->enter();
 
-	return rect.lr.y - rect.ul.y + 1;
+                    break;
+                }
+            }
+
+            break;
+        }
+        case STATE_SPLASH: {
+            switch(key) {
+                case Pk_s: {
+                    level_current = 0;
+                    level_load(level_current);
+
+                    break;
+                }
+                case Pk_m: {
+                    state_pre_menu = state;
+
+                    lvl_menu->select(level_current);
+                    set_state(STATE_MENU);
+
+                    break;
+                }
+                case Pk_Escape: {
+                    exit(EXIT_SUCCESS);
+                }
+            }
+
+            break;
+        }
+        case STATE_END: {
+            switch(key) {
+                case Pk_Escape: {
+                    exit(EXIT_SUCCESS);
+                }
+                case Pk_m: {
+                    state_pre_menu = state;
+
+                    lvl_menu->select(level_current);
+                    set_state(STATE_MENU);
+
+                    break;
+                }
+                case Pk_s: {
+                    level_current = 0;
+
+                    level_load(level_current);
+
+                    break;
+                }
+            }
+
+            break;
+        }
+        case STATE_GAME: {
+            Player *player = NULL;
+
+            for (size_t i = 0; i < objects.entries(); ++i) {
+                if (objects[i]->get_type() == OBJECT_PLAYER) {
+                    player = (Player *) objects[i];
+                    break;
+                }
+            }
+
+            if (player == NULL) {
+                throw GameException("Player == NULL in draw method at STATE_GAME");
+            }
+            
+            switch(key) {
+                case Pk_m: {
+                    state_pre_menu = STATE_GAME;
+
+                    lvl_menu->select(level_current);
+                    set_state(STATE_MENU);
+                    
+                    break;
+                }
+                case Pk_Up: {
+                    if (player_move(player, DIRECTION_UP)) {
+                        need_draw = true;
+                    }
+
+                    break;
+                }
+                case Pk_Down: {
+                    if (player_move(player, DIRECTION_DOWN)) {
+                        need_draw = true;
+                    }
+
+                    break;
+                }
+                case Pk_Left: {
+                    if (player_move(player, DIRECTION_LEFT)) {
+                        need_draw = true;
+                    }
+
+                    break;
+                }
+                case Pk_Right: {
+                    if (player_move(player, DIRECTION_RIGHT)) {
+                        need_draw = true;                       
+                    }
+
+                    break;
+                }
+                case Pk_BackSpace: {
+                    story_back();
+                    need_draw = true;
+
+                    break;
+                }
+                case Pk_r: {
+                    level_restart();
+
+                    break;
+                }
+                case Pk_n: {
+                    level_next();
+
+                    break;
+                }
+                case Pk_p: {
+                    level_prev();
+
+                    break;
+                }
+                case Pk_Escape: {
+                    exit(EXIT_SUCCESS);
+                }
+            }
+            break;
+        }
+    }
+
+    if (need_draw) {
+        draw();
+    }
 }
 
 void Game::draw() {
-	PmMemStart(mc);
+    debug.printf(DBG_LVL_3, "call Game::draw\n");
 
-	PgSetFillColor(0x0A0A0A);
-	PgDrawIRect(0, 0, win_size.w, win_size.h, Pg_DRAW_FILL );
+    PmMemStart(mc);
 
-	switch(state) {
-		case STATE_SPLASH: {
-			char			str[100];
-			unsigned int	h;
-			int				s;
-			unsigned int	x;
-			unsigned int 	y;
+    if (clear_screen) {
+        PgSetFillColor(palette.background);
+        PgDrawIRect(0, 0, win_size.w, win_size.h, Pg_DRAW_FILL );
+        clear_screen = false;
 
-			sprintf(str, "Sokoban for QNX4.25/Photon v%s", GAME_VERSION);
-			h = get_string_height("pcterm20", str);
+        for (size_t i = 0; i < objects.entries(); ++i) {
+            Object *object = objects[i];
+            object->set_changed();
+        }
+    }
 
-			x = h / 2;
-			y = 0;
-			s = 1;
+    switch(state) {
+        case STATE_SPLASH: {
+            debug.printf(DBG_LVL_3, "Draw STATE_SPLASH\n");
 
-			draw_string(x, y + h + s, str, "pcterm20", 0xF0F0F0);
+            char            str[100];
+            char *          splash_font = "pcterm14";
+            unsigned int    h;
+            int             s;
+            unsigned int    x;
+            unsigned int    y;
 
-			_bprintf(str, 100, "Control: ");
-			draw_string(x, y + (h * 2) + s, str, "pcterm20", 0xF0F0F0);
+            sprintf(str, "Sokoban for QNX4.25/Photon v%s", GAME_VERSION);
+            h = Help::get_string_height(splash_font, str);
 
-			_bprintf(str, 100, "N - Next level");
-			draw_string(x, y + (h * 3) + s, str, "pcterm20", 0xF0F0F0);
+            x = h / 2;
+            y = 0;
+            s = 1;
 
-			_bprintf(str, 100, "P - Previous level");
-			draw_string(x, y + (h * 4) + s, str, "pcterm20", 0xF0F0F0);
+            Help::draw_string(x, y + h + s, str, splash_font, palette.font);
 
-			_bprintf(str, 100, "R - Restart level");
-			draw_string(x, y + (h * 5) + s, str, "pcterm20", 0xF0F0F0);
+            _bprintf(str, 100, "Control: ");
+            Help::draw_string(x, y + (h * 2) + s, str, splash_font, palette.font);
 
-			_bprintf(str, 100, "Backspace - Undo");
-			draw_string(x, y + (h * 6) + s, str, "pcterm20", 0xF0F0F0);
+            _bprintf(str, 100, "N - Next level");
+            Help::draw_string(x, y + (h * 3) + s, str, splash_font, palette.font);
 
-			_bprintf(str, 100, "Press S to start");
-			draw_string((win_size.w / 2) - (get_string_width("pcterm20", str) / 2), 
-				(win_size.h / 2), 
-				str, "pcterm20", 0xF0F0F0);
+            _bprintf(str, 100, "P - Previous level");
+            Help::draw_string(x, y + (h * 4) + s, str, splash_font, palette.font);
 
-			_bprintf(str, 100, "(C) %s 2019", GAME_AUTHOR);
-			draw_string(win_size.w - get_string_width("pcterm20", str) - (h / 2), win_size.h - (h / 2), str, "pcterm20", 0xF0F0F0);
+            _bprintf(str, 100, "R - Restart level");
+            Help::draw_string(x, y + (h * 5) + s, str, splash_font, palette.font);
 
-			break;
-		}
-		case STATE_INIT: {
-			break;
-		}
-		case STATE_LOADING: {
-			break;
-		}
-		case STATE_END: {
-			char str[8];
+            _bprintf(str, 100, "M - Level selection");
+            Help::draw_string(x, y + (h * 6) + s, str, splash_font, palette.font);
 
-			_bprintf(str, 8, "The END");
+            _bprintf(str, 100, "Backspace - Undo");
+            Help::draw_string(x, y + (h * 7) + s, str, splash_font, palette.font);
 
-			draw_string((win_size.w / 2) - (get_string_width("pcterm20", str) / 2), (win_size.h / 2), str, "pcterm20", 0xF0F0F0);
-			break;
-		}
-		case STATE_GAME: {
-			PhPoint_t p;
-			
-			char status_level[50];
-			char status_moves[12];
+            _bprintf(str, 100, "Press S to start");
+            Help::draw_string((win_size.w / 2) - (Help::get_string_width(splash_font, str) / 2), 
+                (win_size.h / 2), 
+                str, 
+                splash_font, 
+                palette.font);
 
-			_bprintf(status_level, 50, "Level: %s", (const char *) level_name());
-			_bprintf(status_moves, 12, "Moves: %4d", moves);
+            _bprintf(str, 100, "(C) %s 2019-2020", "Roman Serov");
+            Help::draw_string(win_size.w - Help::get_string_width(splash_font, str) - (h / 2), 
+                win_size.h - (h / 2), 
+                str, 
+                splash_font, 
+                palette.font);
 
-			p.x = (status_height / 2) + 1;
-			p.y = win_size.h - (status_height / 2);
+            break;
+        }
+        case STATE_INIT: {
+            debug.printf(DBG_LVL_3, "Draw STATE_INIT\n");
+            break;
+        }
+        case STATE_LOADING: {
+            debug.printf(DBG_LVL_3, "Draw STATE_LOADING\n");
+            break;
+        }
+        case STATE_END: {
+            debug.printf(DBG_LVL_3, "Draw STATE_END\n");
 
-			draw_string(p.x, p.y, status_level, status_font, 0xF0F0F0);
+            char str[8];
 
-			p.x = win_size.w - get_string_width(status_font, status_moves) - ((status_height / 2) + 1);
+            _bprintf(str, 8, "The END");
 
-			draw_string(p.x, p.y, status_moves, status_font, 0xF0F0F0);
+            Help::draw_string((win_size.w / 2) - (Help::get_string_width("pcterm20", str) / 2), (win_size.h / 2), str, "pcterm20", palette.font);
+            break;
+        }
+        case STATE_GAME: {
+            debug.printf(DBG_LVL_3, "Draw STATE_GAME\n");
 
-			for (size_t i = 0; i < objects.entries(); ++i) {
-				Object *object = objects[i];
-				object->draw();
-			}
-			break;
-		}
-	}
+            Level *lvl = level_curr();
 
-	PmMemFlush(mc, buf_draw);
-	PmMemStop(mc);
+            PhPoint_t p;
+            
+            char status_level_name[50];
+            char status_level_info[100];
+            char status_level_best_info[100];
 
-	PtArg_t args[1];
-	PtSetArg( &args[0], Pt_ARG_LABEL_DATA, buf_draw, sizeof(*buf_draw));
-	PtSetResources(label, 1, args);
+            level_stat_t &          level_stat       = lvl->get_stat();
+            const level_stat_t &    level_best_stat  = lvl->get_stat_best();
+
+            _bprintf(status_level_name, 50, "%s", (const char *) lvl->get_name());
+            _bprintf(status_level_info, 100, "%02d:%02d / %-4d", 
+                level_stat.time.minutes, 
+                level_stat.time.seconds, 
+                level_stat.moves);
+
+            PgSetFillColor(palette.status_background);
+            PgDrawIRect(0, win_size.h - status_height, win_size.w, win_size.h, Pg_DRAW_FILL);
+
+            // =======================================
+
+            p.x = (status_height / 2) + 1;
+            p.y = win_size.h - (status_height / 2) + (status_font_height / 3);
+
+            Help::draw_string(p.x, p.y, status_level_name, status_font, palette.status_font);
+
+            // =======================================
+
+            p.x = (win_size.w / 2) - (Help::get_string_width(status_font, status_level_info) / 2);
+
+            Help::draw_string(p.x, p.y, status_level_info, status_font, palette.status_font);
+
+            // =======================================
+
+            if (!lvl->is_first_run()) {
+                _bprintf(status_level_best_info, 100, "%02d:%02d / %4d", 
+                    level_best_stat.time.minutes, 
+                    level_best_stat.time.seconds, 
+                    level_best_stat.moves);
+            } else {
+                _bprintf(status_level_best_info, 100, "%s", "First run");                 
+            }
+
+            p.x = win_size.w - Help::get_string_width(status_font, status_level_best_info) - ((status_height / 2) + 1);
+
+            Help::draw_string(p.x, p.y, status_level_best_info, status_font, palette.status_font);
+
+            // =======================================
+
+            for (size_t i = 0; i < objects.entries(); ++i) {
+                Object *object = objects[i];
+
+                object->draw();
+            }
+
+            break;
+        }
+        case STATE_MENU: {
+            debug.printf(DBG_LVL_3, "Draw STATE_MENU\n");
+
+            if (lvl_menu != NULL && lvl_preview != NULL) {
+                lvl_menu->draw();
+                lvl_preview->draw();
+            }
+
+            break;
+        }
+    }
+
+    PmMemFlush(mc, buf_draw);
+    PmMemStop(mc);
+
+    PtArg_t args[1];
+    PtSetArg(&args[0], Pt_ARG_LABEL_DATA, buf_draw, sizeof(*buf_draw));
+    PtSetResources(label, 1, args);
 }
 
-static int Game::keyboard_callback(PtWidget_t *widget, void *data, PtCallbackInfo_t *info) {
-	if (info->event->type == Ph_EV_KEY) {
-		PhKeyEvent_t *	ke		= (PhKeyEvent_t *) PhGetData(info->event);
-		Game *			game	= &Game::get_instance();
+int Game::keyboard_callback(PtWidget_t *widget, void *data, PtCallbackInfo_t *info) {
+    Game & game    = Game::get_instance();
 
-		if (PkIsFirstDown(ke->key_flags)) {
-			game->key_process(ke->key_cap);
-		} else if (PkIsReleased(ke->key_flags)) {
-			//game->key_process(ke->key_cap, false, true);
-		} else {
-			game->key_process(ke->key_cap);
-		}
-	}
-	return Pt_CONTINUE;
+    // game.debug.printf(DBG_LVL_3, "call Game::keyboard_callback\n");
+
+    if (info->event->type == Ph_EV_KEY) {
+        PhKeyEvent_t *  ke      = (PhKeyEvent_t *) PhGetData(info->event);
+
+        if (PkIsFirstDown(ke->key_flags)) {
+            game.key_process(ke->key_cap);
+        } else if (PkIsReleased(ke->key_flags)) {
+            //game->key_process(ke->key_cap, false, true);
+        } else {
+            game.key_process(ke->key_cap);
+        }
+    }
+    return Pt_CONTINUE;
+}
+
+int Game::input_callback(void *data, pid_t rcv_id, void *message, size_t size) {
+    Game & game    = Game::get_instance();
+
+    if (game.timer != NULL) {
+        if (rcv_id == game.timer->get_proxy() && game.state == STATE_GAME) {
+             level_stat_t & level_stat = game.level_curr()->get_stat();
+
+            if (level_stat.time.seconds + 1 == 60) {
+                level_stat.time.minutes++;
+                level_stat.time.seconds = 0;
+            } else {
+                level_stat.time.seconds++;
+            }
+
+            game.draw();
+        }
+    }
+
+    return Pt_CONTINUE;
 }
 
 void Game::set_state(game_state_t state) {
-	this->state = state;
-	draw();
+    debug.printf(DBG_LVL_3, "call Game::set_state\n");
+
+    this->state         = state;
+    this->clear_screen  = true;
+
+    debug.printf(DBG_LVL_2, "Set state: %d\n", state);
+
+    draw();
 }
 
-String Game::level_name() {
-	int name_index = levels[level_current].index(";");
+Level *Game::level_curr() {
+    debug.printf(DBG_LVL_3, "call Game::level_curr\n");
 
-	return String(levels[level_current], 0, name_index);
+    return res.get_level(level_current);
 }
 
 void Game::level_restart() {
-	set_state(STATE_INIT);
-	level_unload();
-	level_load(level_current);
+    debug.printf(DBG_LVL_3, "call Game::level_restart\n");
+
+    level_unload();
+    level_load(level_current);
 }
 
 void Game::level_next() {
-	set_state(STATE_INIT);
-	level_unload();
+    debug.printf(DBG_LVL_3, "call Game::level_next\n");
 
-	level_current++;
+    level_unload();
 
-	if (level_current < levels.entries()) {
-		level_load(level_current);
-	} else {
-		set_state(STATE_END);
-	}
+    level_current++;
+
+    if (level_current < res.get_levels()->entries()) {
+        level_load(level_current);
+    } else {
+        set_state(STATE_END);
+    }
 }
 
 void Game::level_prev() {
-	set_state(STATE_INIT);
-	level_unload();
+    debug.printf(DBG_LVL_3, "call Game::level_prev\n");
 
-	if (level_current >= 1) {
-		level_load(--level_current);
-	} else {
-		set_state(STATE_SPLASH);
-	}
+    level_unload();
+
+    if (level_current >= 1) {
+        level_load(--level_current);
+    } else {
+        set_state(STATE_SPLASH);
+    }
 }
 
 void Game::level_load(size_t index) {
-	set_state(STATE_LOADING);
+    debug.printf(DBG_LVL_3, "call Game::level_load\n");
 
-	int name_index = levels[level_current].index(";");
+    set_state(STATE_LOADING);
 
-	String level = String(levels[level_current], name_index + 1);
+    Level * lvl         = level_curr();
+    String  level_str   = lvl->get_level_str();
 
-	size_t 			i;
-	unsigned int	x			= 0;
-	unsigned int	y			= 0;
-	
-	unsigned int	x_max		= 0;
-	unsigned int	y_max		= 0;
-	
-	unsigned int 	x_offset	= 0;
-	unsigned int	y_offset	= 0;
+    size_t          i;
 
-	unsigned int	step		= GAME_BLOCK_SIZE;
+    unsigned int    x           = 0;
+    unsigned int    y           = 0;
+    
+    unsigned int    x_max       = 0;
+    unsigned int    y_max       = 0;
+    
+    unsigned int    x_offset    = 0;
+    unsigned int    y_offset    = 0;
 
-	Player *		player		= NULL;
+    unsigned int    step        = block_size;
 
-	for (i = 0; i < level.length(); ++i) {
-		char type = level[i];
+    Player *        player      = NULL;
 
-		switch(type) {
-			case LVL_BTYPE_BRICK: {
-				Brick *brick = new Brick(x, y, step - 1, step - 1, textures.brick);
+    for (i = 0; i < level_str.length(); ++i) {
+        char type = level_str[i];
 
-				objects.insert((Object *)brick);
-				break;
-			}
-			case LVL_BTYPE_BOX: {
-				Box *box = new Box(x, y, step - 1, step - 1, textures.box);
+        switch(type) {
+            case LVL_BTYPE_BRICK: {
+                Brick *brick = new Brick(x, y, step - 1, step - 1, textures->brick);
 
-				boxes.insert((Object *)box);
-				break;
-			}
-			case LVL_BTYPE_BOX_PLACE: {
-				Box_place *box_place = new Box_place(x, y, step - 1, step - 1, textures.box_place);
+                objects.insert((Object *)brick);
 
-				box_places.insert((Object *)box_place);
-				break;
-			}
-			case LVL_BTYPE_BOXWPLACE: {
-				Box *box = new Box(x, y, step - 1, step - 1, textures.box);
-				Box_place *box_place = new Box_place(x, y, step - 1, step - 1, textures.box_place);
+                break;
+            }
+            case LVL_BTYPE_BOX: {
+                Level_background *  lvl_back = new Level_background(x, y, step - 1, step - 1, palette.level_background);
+                Box *               box = new Box(x, y, step - 1, step - 1, textures->box);
 
-				boxes.insert((Object *)box);
-				box_places.insert((Object *)box_place);
-				break;
-			}
-			case LVL_BTYPE_PLAYER: {
-				player = new Player(x, y, step - 1, step - 1);
-				break;
-			}
-			case '\n': {
-				y += step;
+                boxes.insert((Object *)box);
+                background.insert((Object *) lvl_back);
 
-				if (y_max < y) {
-					y_max = y;
-				}
+                break;
+            }
+            case LVL_BTYPE_BOX_PLACE: {
+                Box_place *box_place = new Box_place(x, y, step - 1, step - 1, textures->box_place);
 
-				x = 0;
-				continue;
-			}
-		}
+                box_places.insert((Object *)box_place);
 
-		x += step;
-		if (x_max < x) {
-			x_max = x;
-		}
-	}
+                break;
+            }
+            case LVL_BTYPE_BOXWPLACE: {
+                Box *box = new Box(x, y, step - 1, step - 1, textures->box);
+                Box_place *box_place = new Box_place(x, y, step - 1, step - 1, textures->box_place);
 
-	x_offset = (win_size.w - x_max) / 2;
-	y_offset = (win_size.h - y_max - status_height - (status_height / 2)) / 2;
+                boxes.insert((Object *)box);
+                box_places.insert((Object *)box_place);
 
-	for (i = 0; i < box_places.entries(); ++i) {
-		objects.insert(box_places[i]);
-	}
+                break;
+            }
+            case LVL_BTYPE_PLAYER: {
+                player = new Player(x, y, step - 1, step - 1);
 
-	for (i = 0; i < boxes.entries(); ++i) {
-		objects.insert(boxes[i]);
-	}
+                Level_background *lvl_back = new Level_background(x, y, step - 1, step - 1, palette.level_background);
+                background.insert((Object *) lvl_back);
 
-	objects.insert((Object *)player);
+                break;
+            }
+            case LVL_BTYPE_BACKGROUND: {
+                Level_background *lvl_back = new Level_background(x, y, step - 1, step - 1, palette.level_background);
 
-	for (i = 0; i < objects.entries(); ++i) {
-		Object *obj = objects[i];
+                background.insert((Object *) lvl_back);
 
-		object_pos_t obj_pos = obj->get_pos();
-		obj_pos.x += x_offset;
-		obj_pos.y += y_offset;
-		obj->set_pos(obj_pos.x, obj_pos.y);
-	}
+                break;
+            }
+            case '\n': {
+                y += step;
 
-	moves = 0;
-	set_state(STATE_GAME);
+                if (y_max < y) {
+                    y_max = y;
+                }
+
+                x = 0;
+                continue;
+            }
+        }
+
+        x += step;
+
+        if (x_max < x) {
+            x_max = x;
+        }
+    }
+
+    x_offset = (win_size.w - x_max) / 2;
+    y_offset = (win_size.h - y_max - status_height) / 2;
+
+    for (i = 0; i < background.entries(); ++i) {
+        objects.insert(background[i]);
+    }
+
+    for (i = 0; i < box_places.entries(); ++i) {
+        objects.insert(box_places[i]);
+    }
+
+    for (i = 0; i < boxes.entries(); ++i) {
+        objects.insert(boxes[i]);
+    }
+
+    objects.insert((Object *)player);
+
+    for (i = 0; i < objects.entries(); ++i) {
+        Object *obj = objects[i];
+
+        object_pos_t obj_pos = obj->get_pos();
+        
+        obj_pos.x += x_offset;
+        obj_pos.y += y_offset;
+
+        obj->set_pos(obj_pos.x, obj_pos.y);
+        obj->set_changed();
+    }
+
+    lvl->stat_reset();
+
+    try {
+        String stat_fname = Help::Sprintf("%s/%s.dat", (const char *) path_stat, (const char *) lvl->get_name());
+
+        lvl->load_stat(stat_fname);
+    } catch (StatisticException &e) {
+        debug.printf(DBG_LVL_1, "Couldn't load statistic file (first run?): %s\n", e.what_c());
+    }
+
+    timer = new Timer(1, 0);
+
+    set_state(STATE_GAME);
 }
 
 void Game::level_unload() {
-	story_clear();
+    debug.printf(DBG_LVL_3, "call Game::level_unload\n");
+    
+    delete timer;
+    timer = NULL;
 
-	while (objects.entries() != 0) {
-		Object *obj = objects.first();
+    set_state(STATE_INIT);
 
-		switch(obj->get_type()) {
-			case OBJECT_BRICK: {
-				delete (Brick *) obj;
-				break;
-			}
-			case OBJECT_BOX: {
-				delete (Box *) obj;
-				break;
-			}
-			case OBJECT_BOXPLACE: {
-				delete (Box_place *) obj;
-				break;
-			}
-			case OBJECT_PLAYER: {
-				delete (Player *) obj;
-				break;
-			}
-		}
+    story_clear();
 
-		objects.removeFirst();
-	}
+    while (objects.entries() != 0) {
+        Object *obj = objects.first();
 
-	while (boxes.entries() != 0) {
-		boxes.removeFirst();
-	}
+        switch(obj->get_type()) {
+            case OBJECT_BRICK: {
+                delete (Brick *) obj;
+                break;
+            }
+            case OBJECT_BOX: {
+                delete (Box *) obj;
+                break;
+            }
+            case OBJECT_BOXPLACE: {
+                delete (Box_place *) obj;
+                break;
+            }
+            case OBJECT_PLAYER: {
+                delete (Player *) obj;
+                break;
+            }
+            case OBJECT_BACKGROUND: {
+                delete (Level_background *) obj;
+                break;              
+            }
+        }
 
-	while (box_places.entries() != 0) {
-		box_places.removeFirst();
-	}
+        objects.removeFirst();
+    }
+
+
+    while (background.entries() != 0) {
+        background.removeFirst();
+    }
+
+    while (boxes.entries() != 0) {
+        boxes.removeFirst();
+    }
+
+    while (box_places.entries() != 0) {
+        box_places.removeFirst();
+    }
+}
+
+void Game::level_menu_enter_callback(String name, void *data) {
+    menu_item_data_t * menu_item   = (menu_item_data_t *) data;
+    Game &             game        = Game::get_instance();
+
+    game.debug.printf(DBG_LVL_3, "call Game::level_menu_enter_callback\n");
+
+    switch(menu_item->action) {
+        case MENU_ITEM_LOAD_LVL: {
+            size_t level_index = *((size_t *) menu_item->data);
+
+            game.level_unload();
+            game.level_current = level_index;
+            game.level_load(level_index);
+
+            break;
+        }
+    }
+}
+
+void Game::level_menu_select_callback(String name, void *data) {
+    menu_item_data_t * menu_item  = (menu_item_data_t *) data;
+    Game &             game       = Game::get_instance();
+
+    game.debug.printf(DBG_LVL_3, "call Game::level_menu_select_callback\n");
+
+    switch(menu_item->action) {
+        case MENU_ITEM_LOAD_LVL: {
+            size_t  level_index = *((size_t *) menu_item->data);
+            Level * lvl         = game.res.get_level(level_index);
+
+            game.lvl_preview->load_level(lvl);
+
+            break;
+        }
+    }   
 }

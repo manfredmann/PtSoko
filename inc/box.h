@@ -25,23 +25,27 @@
 #include <math.h>
 
 class Box : public Object {
-	public:
-		Box(unsigned int x, unsigned int y, unsigned int w, unsigned int h, PhImage_t *texture);
+    public:
+        Box(unsigned int x, unsigned int y, unsigned int w, unsigned int h, PhImage_t *texture);
 
-		void			draw();
-		object_type_t	get_type();
-		void			set_pos(unsigned int x, unsigned int y);
-		
-		object_pos_t	move_calc(direction_t dir);
-		void 			move(direction_t dir);
+        void            draw();
+        object_type_t   get_type();
+        void            set_pos(unsigned int x, unsigned int y);
+        
+        object_pos_t    move_calc(direction_t dir);
+        void            move(direction_t dir);
 
-		object_pos_t	get_pos();
+        object_pos_t    get_pos();
 
+        void            set_changed();
+        bool            get_changed();
 
-	private:
-		object_pos_t	pos_start;
-		object_pos_t 	pos;
-		PhImage_t *		texture;
+    private:
+        object_pos_t    pos_start;
+        object_pos_t    pos;
+        PhImage_t *     texture;
+
+        bool            is_changed;
 };
 
 #endif

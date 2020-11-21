@@ -1,6 +1,6 @@
 /*
 * PtSoko - Sokoban for QNX4.25/Photon
-* Copyright (C) 2019 Roman Serov <roman@serov.co>
+* Copyright (C) 2019-2020 Roman Serov <roman@serov.co>
 *
 * This file is part of Sokoban for QNX4.25/Photon.
 * 
@@ -21,66 +21,74 @@
 #include "player.h"
 
 Player::Player(unsigned int x, unsigned int y, unsigned int w, unsigned int h) {
-	this->pos.x = x;
-	this->pos.y = y;
-	this->pos.w = w;
-	this->pos.h = h;
+    this->pos.x = x;
+    this->pos.y = y;
+    this->pos.w = w;
+    this->pos.h = h;
 }
 
 void Player::draw() {
-	PhRect_t  rect;
-	
-	rect.ul.x = pos.x;
-	rect.ul.y = pos.y;
-	rect.lr.x = pos.x + pos.w;
-	rect.lr.y = pos.y + pos.h;
+    PhRect_t  rect;
+    
+    rect.ul.x = pos.x;
+    rect.ul.y = pos.y;
+    rect.lr.x = pos.x + pos.w;
+    rect.lr.y = pos.y + pos.h;
 
-	PgSetUserClip(&rect);
+    PgSetUserClip(&rect);
 
-	PgSetFillColor(0x005500);
-	PgDrawIRect(pos.x, pos.y, pos.x + pos.w, pos.y + pos.h, Pg_DRAW_FILL);
+    PgSetFillColor(0x005500);
+    PgDrawIRect(pos.x, pos.y, pos.x + pos.w, pos.y + pos.h, Pg_DRAW_FILL);
 
-	PtClipRemove();
+    PtClipRemove();
 }
 
 object_type_t Player::get_type() {
-	return OBJECT_PLAYER;
+    return OBJECT_PLAYER;
 }
 
 void Player::set_pos(unsigned int x, unsigned int y) {
-	this->pos.x = x;
-	this->pos.y = y;
+    this->pos.x = x;
+    this->pos.y = y;
 }
 
 object_pos_t Player::get_pos() {
-	return pos;
+    return pos;
 }
 
 object_pos_t Player::move_next(direction_t dir) {
-	object_pos_t pos_curr = pos;
+    object_pos_t pos_curr = pos;
 
-	switch(dir) {
-		case DIRECTION_UP: {
-			pos_curr.y -= pos.h + 1;
-			break;
-		}
-		case DIRECTION_DOWN: {
-			pos_curr.y += pos.h + 1;
-			break;
-		}
-		case DIRECTION_LEFT: {
-			pos_curr.x -= pos.w + 1;
-			break;
-		}
-		case DIRECTION_RIGHT: {
-			pos_curr.x += pos.w + 1;
-			break;
-		}
-	}
+    switch(dir) {
+        case DIRECTION_UP: {
+            pos_curr.y -= pos.h + 1;
+            break;
+        }
+        case DIRECTION_DOWN: {
+            pos_curr.y += pos.h + 1;
+            break;
+        }
+        case DIRECTION_LEFT: {
+            pos_curr.x -= pos.w + 1;
+            break;
+        }
+        case DIRECTION_RIGHT: {
+            pos_curr.x += pos.w + 1;
+            break;
+        }
+    }
 
-	return pos_curr;
+    return pos_curr;
 }
 
 void Player::move(direction_t dir) {
-	pos = move_next(dir);
+    pos = move_next(dir);
+}
+
+void Player::set_changed() {
+    
+}
+
+bool Player::get_changed() {
+    return true;
 }

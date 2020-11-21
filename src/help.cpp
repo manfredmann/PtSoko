@@ -1,6 +1,6 @@
 /*
 * PtSoko - Sokoban for QNX4.25/Photon
-* Copyright (C) 2019 Roman Serov <roman@serov.co>
+* Copyright (C) 2019-2020 Roman Serov <roman@serov.co>
 *
 * This file is part of Sokoban for QNX4.25/Photon.
 * 
@@ -19,18 +19,77 @@
 */
 
 #include "help.h"
+#include <dirent.h>
 
-static String Help::Sprintf(char *fmt, ...) {
-	char *	buffer = new char[1024];
-	String	str;
+String Help::Sprintf(const char *fmt, ...) {
+    char *  buffer = new char[1024];
+    String  str;
 
-	va_list args;
-	va_start(args, fmt);
-	_vbprintf(buffer, 1024, fmt, args);
-	va_end(args);
+    va_list args;
+    va_start(args, fmt);
+    _vbprintf(buffer, 1024, fmt, args);
+    va_end(args);
 
-	str = String(buffer);
-	delete buffer;
+    str = String(buffer);
+    delete[] buffer;
 
-	return str;
+    return str;
+}
+
+bool Help::is_dir_exists(String path) {
+    DIR *dir = opendir((const char *) path);
+
+    if (dir != NULL) {
+        closedir(dir);
+
+        return true;
+    }
+
+    return false;
+}
+
+bool Help::is_file_exists(String path) {
+    FILE *f = fopen((const char *) path, "r");
+
+    if (f != NULL) {
+        fclose(f);
+
+        return true;
+    }
+
+    return false;
+}
+
+unsigned int Help::get_string_width(const char *font, char *str) {
+    PhRect_t rect;
+
+    PfExtentText(&rect, NULL, font, str, strlen(str));
+
+    return rect.lr.x - rect.ul.x + 1;
+}
+
+unsigned int Help::get_string_height(const char *font, char *str) {
+    PhRect_t rect;
+
+    PfExtentText(&rect, NULL, font, str, strlen(str));
+
+    return rect.lr.y - rect.ul.y + 1;
+}
+
+void Help::draw_string(unsigned int x, unsigned int y, char *str, char *font, unsigned int color, unsigned int background_color, bool back) {
+    PhPoint_t p;
+    p.x = x;
+    p.y = y;
+
+    unsigned short h = Help::get_string_height(font, str);
+    unsigned short w = Help::get_string_width(font, str);
+
+    if (back) {
+        PgSetFillColor(background_color);
+        PgDrawIRect(p.x, p.y - h, p.x + w, p.y, Pg_DRAW_FILL);
+    }
+
+    PgSetFont(font);
+    PgSetTextColor(color);
+    PgDrawText(str, strlen(str), &p, 0);
 }
