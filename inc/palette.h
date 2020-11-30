@@ -41,6 +41,7 @@ typedef struct {
     unsigned int font;
     unsigned int menu_item_background;
     unsigned int control_background;
+    unsigned int player;
 
     unsigned int control_btn;
     unsigned int control_btn_block;

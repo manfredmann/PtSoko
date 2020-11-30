@@ -38,29 +38,47 @@ Game::Game() : debug(Debug::get_instance()), res(Resources::get_instance()) {
 
     path_home               = res.get_path_home();
     path_stat               = res.get_path_stat();
+
+    atexit(Game::cleanup);
 }
 
 Game::~Game() {
     debug.printf(DBG_LVL_3, "call Game::~Game\n");
+}
 
-    if (mc != NULL) {
-        PmMemReleaseMC(mc);
+void Game::cleanup() {
+    Game &game = Game::get_instance();
+
+    game.debug.printf(DBG_LVL_3, "call Game::cleanup\n");
+
+    if (game.mc != NULL) {
+        PmMemReleaseMC(game.mc);
+
+        game.mc = NULL;
     }
 
-    if (lvl_menu != NULL) {
-        delete lvl_menu;
+    if (game.lvl_menu != NULL) {
+        delete game.lvl_menu;
+
+        game.lvl_menu = NULL;
     }
 
-    if (lvl_preview != NULL) {
-        delete lvl_preview;
+    if (game.lvl_preview != NULL) {
+        delete game.lvl_preview;
+
+        game.lvl_preview = NULL;
     }
 
-    if (buf_draw != NULL) {
-        delete buf_draw;
+    if (game.buf_draw != NULL) {
+        delete game.buf_draw;
+
+        game.buf_draw = NULL;
     }
 
-    if (status_font != NULL) {
-        delete status_font;
+    if (game.status_font != NULL) {
+        delete game.status_font;
+
+        game.status_font = NULL;
     }
 }
 
@@ -1017,7 +1035,7 @@ void Game::level_load(size_t index) {
                 break;
             }
             case LVL_BTYPE_PLAYER: {
-                player = new Player(x, y, step - 1, step - 1);
+                player = new Player(x, y, step - 1, step - 1, palette.player);
 
                 Level_background *lvl_back = new Level_background(x, y, step - 1, step - 1, palette.level_background);
                 background.insert((Object *) lvl_back);

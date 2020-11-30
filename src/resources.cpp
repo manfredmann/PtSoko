@@ -27,12 +27,24 @@ Resources::Resources() : debug(Debug::get_instance()) {
     homes.insert("./.ptsoko/");
     homes.insert(String(String(getenv("HOME")) + "/.ptsoko/"));
     homes.insert("/usr/ptsoko/");
+
+    atexit(Resources::cleanup);
 }
 
 Resources::~Resources() {
-    for (size_t i = 0; i < img_shmem.entries(); ++i) {
-        PgShmemDestroy(img_shmem[i]);
+    debug.printf(DBG_LVL_3, "call Resources::~Resources\n");
+}
+
+void Resources::cleanup() {
+    Resources &res = Resources::get_instance();
+
+    res.debug.printf(DBG_LVL_3, "call Resources::cleanup\n");
+
+    for (size_t i = 0; i < res.img_shmem.entries(); ++i) {
+        PgShmemDestroy(res.img_shmem[i]);
     }
+
+    PgShmemCleanup();
 }
 
 void Resources::init() {

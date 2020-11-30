@@ -56,7 +56,7 @@
 typedef WCValOrderedVector<object_pos_t *>  objects_pos_t;
 typedef WCValOrderedVector<objects_pos_t *> story_t;
 
-#define GAME_VERSION "0.3.0"
+#define GAME_VERSION "0.3.1"
 
 typedef enum {
     MENU_ITEM_LOAD_LVL,
@@ -172,6 +172,8 @@ class Game {
 
         static void         level_menu_enter_callback(String name, void *data);
         static void         level_menu_select_callback(String name, void *data);
+
+        static void         cleanup();
 
 };
 

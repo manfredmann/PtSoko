@@ -20,11 +20,12 @@
 
 #include "player.h"
 
-Player::Player(unsigned int x, unsigned int y, unsigned int w, unsigned int h) {
+Player::Player(unsigned int x, unsigned int y, unsigned int w, unsigned int h, PgColor_t color) {
     this->pos.x = x;
     this->pos.y = y;
     this->pos.w = w;
     this->pos.h = h;
+    this->color = color;
 }
 
 void Player::draw() {
@@ -37,7 +38,7 @@ void Player::draw() {
 
     PgSetUserClip(&rect);
 
-    PgSetFillColor(0x005500);
+    PgSetFillColor(color);
     PgDrawIRect(pos.x, pos.y, pos.x + pos.w, pos.y + pos.h, Pg_DRAW_FILL);
 
     PtClipRemove();

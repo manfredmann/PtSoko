@@ -25,6 +25,10 @@
 #include "game.h"
 #include "respack.h"
 
+void signal_handler(int sign) {    
+    exit(EXIT_SUCCESS);
+}
+
 int main(int argc, char **argv) {
     OptParser   opt(argv[0], "Sokoban game implementation for QXN4.25/Photon");
 
@@ -34,9 +38,13 @@ int main(int argc, char **argv) {
     int         width       = 800;
     int         height      = 600;
 
+    signal(SIGINT,  signal_handler);
+    signal(SIGTERM, signal_handler);
+    signal(SIGQUIT, signal_handler);
+    signal(SIGABRT, signal_handler);
+    signal(SIGHUP,  signal_handler);
 
     try {
-
         String res_list;
 
         res_list  = "Window size like a\n";

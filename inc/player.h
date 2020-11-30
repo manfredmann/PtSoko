@@ -26,7 +26,7 @@
 
 class Player : public Object {
     public:
-        Player(unsigned int x, unsigned int y, unsigned int w, unsigned int h);
+        Player(unsigned int x, unsigned int y, unsigned int w, unsigned int h, PgColor_t color);
 
         void            draw();
         object_type_t   get_type();
@@ -44,6 +44,7 @@ class Player : public Object {
     private:
         object_pos_t    pos_start;
         object_pos_t    pos;
+        PgColor_t       color;
 };
 
 #endif

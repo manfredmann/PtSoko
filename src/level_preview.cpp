@@ -126,7 +126,7 @@ void Level_preview::load_level(Level *lvl) {
                 break;
             }
             case LVL_BTYPE_PLAYER: {
-                player = new Player(x, y, step - 1, step - 1);
+                player = new Player(x, y, step - 1, step - 1, palette.player);
 
                 Level_background *lvl_back = new Level_background(x, y, step - 1, step - 1, palette.level_background);
                 background.insert((Object *) lvl_back);

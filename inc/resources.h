@@ -121,6 +121,8 @@ class Resources {
         unsigned short      block_size;
         unsigned short      preview_block_size;
 
+
+        static void         cleanup();
 };
 
 #endif

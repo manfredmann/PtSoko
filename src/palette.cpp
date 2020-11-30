@@ -117,6 +117,7 @@ void Palette::load(String fname) {
     palette.control_btn_text        = get_color("COLOR_CONTROL_BTN_TEXT");
     palette.control_btn_text_block  = get_color("COLOR_CONTROL_BTN_TEXT_BLOCK");
     palette.control_btn_arm         = get_color("COLOR_CONTROL_BTN_ARM");
+    palette.player                  = get_color("COLOR_PLAYER");
 }
     
 palette_t & Palette::get_palette() {
